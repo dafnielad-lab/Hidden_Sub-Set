@@ -1,4 +1,4 @@
-# Hidden Sub-Set
+# Hidden Subset
 
 A mathematical deduction game built around the subset-sum problem, together with an interactive lab for exploring the structure behind it.
 
@@ -36,9 +36,19 @@ The lab's epicycle engine and detector are mathematically verified: the running 
 This project ships with a **dual license** — see [LICENSE](LICENSE) for the full text.
 
 - **Code** (HTML structure, CSS, JavaScript, test harness): **MIT License**. Reuse the implementation freely; just keep the copyright notice.
-- **Creative content** (game design, rules, the three calibrated number lists, instructional text, visual design language): **Creative Commons Attribution 4.0 International (CC BY 4.0)**. You may share and adapt — including commercially — provided you credit *Elad Dafni* and link the license.
+- **Creative content** (written rules, explanatory text, calibrated lists, decomposition analysis, prose, diagrams, visual presentation): **Creative Commons Attribution 4.0 International (CC BY 4.0)**. You may share and adapt — including commercially — provided you credit *Elad Dafni* and link the license. This does not assert rights over abstract game mechanics or subset-sum mathematics.
 
 Combined, the license lets you fork and build on the technical work freely, while keeping attribution for the game design.
+
+---
+
+## Independence
+
+Hidden Subset is an independent game and is not affiliated with, endorsed by, or sponsored by any other deduction game or publisher. Any resemblance to existing games in the deduction or code-breaking genre reflects shared mathematical territory, not derivation.
+
+## Version
+
+**Version 0.1 · June 2026** — Initial public release.
 
 ---
 
