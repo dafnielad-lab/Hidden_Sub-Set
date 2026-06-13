@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hidden Sub-Set — Local Game</title>
+<meta name="description" content="Local pass-and-play mode for Hidden Sub-Set. Up to 6 players, private combination entry, auto-computed answers.">
+<meta property="og:title" content="Hidden Sub-Set · Local Game">
+<meta property="og:description" content="Hand the device around. Each player picks a secret combination privately; the system handles turns, answers, and rules.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Assistant:wght@400;600;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FBFAF4; --grid:rgba(96,148,201,.14);
+  --graphite:#26262E; --pencil:#5A5A64;
+  --ink:#1D43BD; --redpencil:#C8362B;
+  --marker:#F9E37A; --teal:#1D9E75;
+  --token-bg:#FFFFFF; --token-border:#B9B5A6;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:'Assistant',sans-serif; color:var(--graphite);
+  background:var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:24px 24px;
+  font-size:17px; line-height:1.6;
+}
+.page{max-width:880px;margin:0 auto;padding:0 22px 80px}
+
+header{padding:32px 0 16px}
+.eyebrow{font-size:13px;letter-spacing:.08em;font-weight:700;color:var(--ink);margin-bottom:6px}
+h1{font-family:'Frank Ruhl Libre',serif;font-weight:900;font-size:clamp(30px,5vw,44px);line-height:1.1}
+.tagline{font-size:16px;color:var(--pencil);max-width:44em;margin-top:4px}
+
+h2{font-family:'Frank Ruhl Libre',serif;font-weight:700;font-size:24px;margin-bottom:14px;display:flex;align-items:center;gap:12px}
+h2 .step{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#fff;background:var(--ink);border-radius:999px;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+h3{font-family:'Frank Ruhl Libre',serif;font-weight:700;font-size:19px;margin:18px 0 8px}
+
+.card{background:rgba(255,255,255,.78);border:1px solid var(--token-border);border-radius:10px;padding:20px 22px;margin-top:22px}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lbl{font-size:14px;font-weight:600;color:var(--pencil)}
+.hint{font-size:14px;color:var(--pencil);max-width:50em}
+
+input[type=text],input[type=number]{
+  font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:500;
+  border:1.5px solid var(--token-border);border-radius:7px;
+  padding:7px 12px;background:#fff;color:var(--graphite);
+  direction:ltr;text-align:left;
+}
+input[type=text]:focus,input[type=number]:focus{outline:none;border-color:var(--ink)}
+
+button{
+  font-family:'Assistant',sans-serif;font-weight:700;font-size:15px;
+  border:1.5px solid var(--token-border);border-bottom-width:3px;border-radius:7px;
+  background:#fff;color:var(--graphite);padding:8px 16px;cursor:pointer;
+}
+button:hover{border-color:var(--ink);color:var(--ink)}
+button.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+button.primary:hover{background:#163394;color:#fff;border-color:#163394}
+button.danger{color:var(--redpencil)}
+button.danger:hover{border-color:var(--redpencil)}
+button.danger.solid{background:var(--redpencil);color:#fff;border-color:var(--redpencil)}
+button.danger.solid:hover{background:#a82a21;border-color:#a82a21;color:#fff}
+button.small{font-size:13px;padding:5px 12px;border-bottom-width:2px}
+button.big{font-size:17px;padding:11px 22px}
+button:disabled{opacity:.4;cursor:default}
+
+/* tokens */
+.tok{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:36px;height:36px;padding:0 9px;
+  background:var(--token-bg);border:1.5px solid var(--token-border);border-bottom-width:3px;
+  border-radius:7px;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:17px;color:var(--graphite);
+  user-select:none;
+}
+.tok.sm{min-width:28px;height:28px;font-size:14px;border-radius:5px;padding:0 6px}
+.tok.btnlike{cursor:pointer}
+.tok.btnlike:hover{border-color:var(--ink)}
+.tok.sel{background:var(--marker);border-color:var(--graphite)}
+.tok.disabled{opacity:.35;cursor:default}
+.tok.removable{cursor:pointer;background:rgba(29,67,189,.08);border-color:var(--ink);color:var(--ink)}
+.tok.removable:hover{background:rgba(200,54,43,.1);border-color:var(--redpencil);color:var(--redpencil)}
+
+.toks{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0}
+
+.err{color:var(--redpencil);font-weight:600;font-size:14px;margin-top:6px;display:none}
+
+/* preset & N */
+.presetRow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}
+
+/* player name inputs */
+.playerInputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:12px}
+.playerInputs label{font-size:13px;font-weight:600;color:var(--pencil);display:block;margin-bottom:3px}
+.playerInputs input{width:100%}
+
+/* combo overlay */
+.comboOverlay{
+  position:fixed;inset:0;background:var(--graphite);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  z-index:100;color:#fff;text-align:center;padding:24px;
+}
+.comboOverlay h2{font-family:'Frank Ruhl Libre',serif;font-size:32px;color:#fff;display:block;margin-bottom:14px}
+.comboOverlay h2::after,.comboOverlay h2::before{display:none}
+.comboOverlay p{font-size:18px;color:#cfccc0;margin-bottom:30px;max-width:30em}
+.comboOverlay .nm{color:var(--marker)}
+.comboOverlay button{background:var(--marker);border-color:var(--marker);color:var(--graphite);font-size:18px;padding:14px 36px;border-bottom-width:4px}
+.comboOverlay button:hover{background:#f5d958;border-color:#f5d958;color:var(--graphite)}
+
+/* combo picker */
+.comboBox{padding:14px 16px;background:rgba(29,67,189,.06);border:1.5px dashed var(--ink);border-radius:8px;margin-top:14px;min-height:60px}
+.comboBoxHdr{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px}
+.comboBoxSum{display:inline-block;background:var(--ink);color:#fff;padding:2px 12px;border-radius:999px;font-family:'IBM Plex Mono',monospace;font-weight:700;margin-left:8px}
+
+/* game phase: players panel */
+.playersPanel{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-top:12px}
+.playerCard{background:#fff;border:1.5px solid var(--token-border);border-radius:8px;padding:10px 12px;position:relative}
+.playerCard.turn{border-color:var(--ink);border-width:2px;box-shadow:0 0 0 3px rgba(29,67,189,.12)}
+.playerCard.elim{opacity:.4;background:rgba(200,54,43,.05)}
+.playerCard.elim::after{content:"ELIMINATED";position:absolute;top:6px;right:6px;font-size:10px;font-weight:700;color:var(--redpencil);letter-spacing:.05em}
+.playerCard .pname{font-weight:700;font-size:15px;margin-bottom:4px}
+.playerCard .psum{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:22px;color:var(--ink)}
+.playerCard.elim .psum{color:var(--redpencil);text-decoration:line-through}
+.playerCard .pcombo{margin-top:5px;display:flex;gap:4px;flex-wrap:wrap}
+
+/* turn banner */
+.turnBanner{
+  margin-top:18px;padding:14px 18px;
+  background:linear-gradient(transparent 50%, rgba(249,227,122,.7) 50%);
+  font-family:'Frank Ruhl Libre',serif;font-weight:700;font-size:22px;
+  display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+}
+.turnActions{display:flex;gap:8px}
+
+/* action modal */
+.modal{
+  position:fixed;inset:0;background:rgba(38,38,46,.5);
+  display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;
+}
+.modal .modalCard{
+  background:var(--paper);border-radius:10px;padding:22px 24px;max-width:560px;width:100%;
+  max-height:90vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,.2);
+}
+.modal h3{margin-top:0}
+.modal .targetRow{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+.modal .targetBtn{
+  border:1.5px solid var(--token-border);border-bottom-width:3px;border-radius:7px;
+  background:#fff;padding:7px 12px;cursor:pointer;font-weight:600;font-size:14px;
+}
+.modal .targetBtn:hover{border-color:var(--ink);color:var(--ink)}
+.modal .targetBtn.sel{background:var(--marker);border-color:var(--graphite)}
+.modal .targetBtn.disabled{opacity:.4;cursor:default}
+.modal .modalFooter{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+
+/* question log */
+.qLog{margin-top:18px;max-height:340px;overflow-y:auto;border:1px solid var(--token-border);border-radius:8px;background:#fff}
+.qEntry{padding:10px 14px;border-bottom:1px dashed rgba(0,0,0,.08);font-size:14px}
+.qEntry:last-child{border-bottom:none}
+.qEntry .who{font-weight:700}
+.qEntry .ans-yes{font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--teal);background:linear-gradient(transparent 50%, var(--marker) 50%);padding:0 4px}
+.qEntry .ans-no{font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--redpencil);padding:0 4px}
+.qEntry .accusation{color:var(--redpencil);font-weight:700}
+.qEntry .accusation.correct{color:var(--teal)}
+.qEntry .autoreveal{font-style:italic;color:var(--pencil);margin-top:3px}
+
+/* end phase */
+.winnerBox{background:linear-gradient(transparent 60%, var(--marker) 60%);font-family:'Frank Ruhl Libre',serif;font-size:36px;font-weight:900;padding:8px 14px;display:inline-block;margin-top:6px}
+.revealList{margin-top:18px}
+.revealCard{display:flex;align-items:center;gap:14px;padding:10px 14px;background:#fff;border:1px solid var(--token-border);border-radius:7px;margin-bottom:8px;flex-wrap:wrap}
+.revealCard.winner{border-color:var(--teal);border-width:2px;background:rgba(29,158,117,.06)}
+.revealCard .nm{font-weight:700;min-width:120px}
+.revealCard .sm{font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--ink)}
+.revealCard .ct{display:flex;gap:4px;flex-wrap:wrap}
+
+footer{margin-top:60px;padding-top:16px;border-top:1px solid var(--token-border);font-size:14px;color:var(--pencil)}
+footer .sig{font-family:'Frank Ruhl Libre',serif;font-weight:700;color:var(--graphite)}
+footer a{color:var(--ink);font-weight:600;text-decoration:none}
+
+@media(max-width:600px){
+  .page{padding:0 14px 60px}
+  .card{padding:14px 14px}
+  h1{font-size:30px}
+  .turnBanner{font-size:18px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <div class="eyebrow">Hidden Sub-Set · Local Pass-and-Play</div>
+  <h1>Game Stage</h1>
+  <p class="tagline">2 to 6 players around a single device. Each player privately enters their combination, and the system computes answers automatically. No paper required — everything is logged.</p>
+</header>
+
+<!-- =========== Phase 1: setup =========== -->
+<section id="setupPhase">
+  <div class="card">
+    <h2><span class="step">1</span>The List</h2>
+    <div class="presetRow">
+      <span class="lbl">Ready-made lists:</span>
+      <button class="small" data-preset="0">Level 1 · Warmup</button>
+      <button class="small" data-preset="1">Level 2 · Classic</button>
+      <button class="small" data-preset="2">Level 3 · Expert</button>
+    </div>
+    <div class="row">
+      <input type="text" id="listInput" style="flex:1;min-width:240px" placeholder="1, 2, 3, 4, 5, 5, 6 ...">
+      <span class="lbl">Max N:</span>
+      <input type="number" id="nInput" min="1" max="12" value="6" style="width:74px">
+    </div>
+    <div class="err" id="listErr"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="step">2</span>Players</h2>
+    <div class="row">
+      <span class="lbl">Number of players:</span>
+      <input type="number" id="numPlayers" min="2" max="6" value="3" style="width:60px">
+    </div>
+    <div class="playerInputs" id="playerInputs"></div>
+    <div class="err" id="playerErr"></div>
+  </div>
+
+  <div class="card" style="text-align:center;background:none;border:none">
+    <button class="primary big" id="startGameBtn">Continue to combination entry →</button>
+  </div>
+</section>
+
+<!-- =========== Phase 2: combo entry =========== -->
+<section id="comboPhase" style="display:none">
+  <div class="comboOverlay" id="comboOverlay">
+    <h2>Entry turn for <span class="nm" id="overlayName">—</span></h2>
+    <p>Hand the device to this player. Everyone else — look away for a moment. The chosen combination must stay secret.</p>
+    <button id="overlayReadyBtn">I'm <span id="overlayName2">—</span>, I'm ready</button>
+  </div>
+  <div id="comboPicker" style="display:none">
+    <div class="card">
+      <h2><span class="step">3</span>Secret combination for <span id="comboPlayerName">—</span></h2>
+      <p class="hint">Tap numbers to add them to your combination. Up to <b id="comboMaxN">6</b> numbers. A value that appears twice in the list may be taken twice.</p>
+
+      <h3>The List</h3>
+      <div class="toks" id="comboAvailable"></div>
+
+      <div class="comboBox">
+        <div class="comboBoxHdr">Your combination so far:</div>
+        <div id="comboCurrent" class="toks" style="margin-top:6px">
+          <span class="lbl">— empty —</span>
+        </div>
+        <div style="margin-top:10px">
+          <span class="lbl">Sum:</span>
+          <span class="comboBoxSum" id="comboSum">0</span>
+          <span class="lbl">·</span>
+          <span class="lbl">Size:</span>
+          <span class="lbl" id="comboSize" style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--ink)">0</span>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:14px;justify-content:flex-end">
+        <button id="comboClearBtn">Clear</button>
+        <button class="primary big" id="comboDoneBtn" disabled>Done →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =========== Phase 3: game =========== -->
+<section id="gamePhase" style="display:none">
+  <div class="card">
+    <h2><span class="step">4</span>The Game Table</h2>
+    <div class="playersPanel" id="playersPanel"></div>
+
+    <div class="turnBanner" id="turnBanner">
+      <div><span id="turnPlayerName">—</span>'s turn</div>
+      <div class="turnActions">
+        <button class="big" id="askBtn">Ask a Question</button>
+        <button class="danger big" id="accuseBtn">Accuse</button>
+      </div>
+    </div>
+
+    <h3>Questions &amp; Accusations Log</h3>
+    <div class="qLog" id="qLog">
+      <div class="qEntry"><span class="lbl">The game has started. All answers and accusations will appear here.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- =========== Phase 4: end =========== -->
+<section id="endPhase" style="display:none">
+  <div class="card">
+    <h2>Game Over</h2>
+    <p class="hint">Winner:</p>
+    <p><span class="winnerBox" id="winnerName">—</span></p>
+    <h3>All combinations revealed</h3>
+    <div class="revealList" id="revealList"></div>
+    <div class="row" style="margin-top:18px;justify-content:flex-end">
+      <button id="newGameBtn">New game (same players)</button>
+      <button class="primary" id="resetAllBtn">Back to start</button>
+    </div>
+  </div>
+</section>
+
+<!-- =========== modals =========== -->
+<div class="modal" id="askModal" style="display:none">
+  <div class="modalCard">
+    <h3>Question by <span id="askAsker">—</span></h3>
+    <p class="hint">Pick an opponent and the value(s) you're asking about. "Yes" means the opponent has all the values. "No" means at least one is missing.</p>
+
+    <h3>Pick an opponent</h3>
+    <div class="targetRow" id="askTargets"></div>
+
+    <h3>Pick value(s)</h3>
+    <div class="toks" id="askValues"></div>
+    <div class="comboBox" style="margin-top:10px">
+      <div class="comboBoxHdr">Your question:</div>
+      <div id="askSelectedView" class="toks" style="margin-top:6px"><span class="lbl">— nothing selected yet —</span></div>
+    </div>
+
+    <div class="modalFooter">
+      <button id="askCancelBtn">Cancel</button>
+      <button class="primary" id="askSubmitBtn" disabled>Ask</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="accuseModal" style="display:none">
+  <div class="modalCard">
+    <h3>Accusation by <span id="accuseAsker">—</span></h3>
+    <p class="hint">Pick an opponent, then build the exact combination you think they hold (including duplicates). If you're right — they're eliminated. If you're wrong — you are.</p>
+
+    <h3>Pick an opponent</h3>
+    <div class="targetRow" id="accuseTargets"></div>
+
+    <div id="accuseAfterTarget" style="display:none">
+      <h3>Build their combination</h3>
+      <p class="hint" style="margin-bottom:6px">Opponent announced sum <b id="accuseTargetSum">—</b>. Your accusation is valid only if the combination you build sums to exactly this value.</p>
+      <div class="toks" id="accuseValues"></div>
+      <div class="comboBox" style="margin-top:10px">
+        <div class="comboBoxHdr">Combination you're accusing:</div>
+        <div id="accuseSelectedView" class="toks" style="margin-top:6px"><span class="lbl">— empty —</span></div>
+        <div style="margin-top:8px">
+          <span class="lbl">Sum:</span> <span class="comboBoxSum" id="accuseSumView">0</span>
+          <span class="lbl">· Required:</span> <b id="accuseSumNeeded">0</b>
+        </div>
+      </div>
+    </div>
+
+    <div class="modalFooter">
+      <button id="accuseCancelBtn">Cancel</button>
+      <button class="danger solid" id="accuseSubmitBtn" disabled>Accuse!</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <span class="sig">Hidden Sub-Set · Local Game</span> · by <b>Elad Dafni</b>
+  <br>
+  <a href="index.html">← Game rules</a>
+  &nbsp;·&nbsp;
+  <a href="lab.html">Interactive Lab →</a>
+  <span style="margin-left:14px;font-size:13px">· Released under <a href="LICENSE">MIT (code) + CC BY 4.0 (content)</a></span>
+</footer>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ----- presets matching the rules page ----- */
+var PRESETS = [
+  {list:[1,2,3,4,5,6,7,8], n:4},
+  {list:[1,2,3,4,5,5,6,7,8,9,10,12], n:6},
+  {list:[1,2,2,3,3,4,5,5,6,7,8,9,10,11,12,15], n:6}
+];
+
+/* ----- game state ----- */
+var state = {
+  phase: 'setup',
+  list: [],          // sorted multiset
+  uniq: [],          // distinct values
+  counts: {},        // value -> available count in list
+  N: 6,
+  players: [],       // {name, combo:[], sum, eliminated}
+  comboIdx: 0,       // current player picking combo
+  turnIdx: 0,        // current player's turn in game
+  qLog: [],          // log entries
+  askTarget: null,
+  askValues: [],
+  accuseTarget: null,
+  accuseValues: [],
+  winner: null,
+};
+
+function $(id){ return document.getElementById(id); }
+
+/* ----- helpers ----- */
+function sortedCopy(arr){ return arr.slice().sort(function(a,b){return a-b;}); }
+function sumOf(arr){ return arr.reduce(function(a,b){return a+b;}, 0); }
+function deepEqualSorted(a, b){
+  if (a.length !== b.length) return false;
+  var sa = sortedCopy(a), sb = sortedCopy(b);
+  for (var i = 0; i < sa.length; i++) if (sa[i] !== sb[i]) return false;
+  return true;
+}
+function multisetIncludes(combo, values){
+  /* does the combo contain all values (counting multiplicities)? */
+  var rem = combo.slice();
+  for (var i = 0; i < values.length; i++){
+    var idx = rem.indexOf(values[i]);
+    if (idx === -1) return false;
+    rem.splice(idx, 1);
+  }
+  return true;
+}
+function countOf(arr, v){
+  var c = 0; for (var i = 0; i < arr.length; i++) if (arr[i] === v) c++; return c;
+}
+
+/* ----- list parsing ----- */
+function parseList(raw){
+  var parts = raw.trim().split(/[\s,;]+/).filter(function(p){return p.length;});
+  var out = [];
+  for (var i = 0; i < parts.length; i++){
+    var x = Number(parts[i]);
+    if (!isFinite(x) || x !== Math.floor(x) || x < 1 || x > 99){
+      throw new Error('Invalid value: "' + parts[i] + '" — only integers between 1 and 99 are allowed.');
+    }
+    out.push(x);
+  }
+  if (out.length < 2) throw new Error('At least two numbers are required in the list.');
+  if (out.length > 24) throw new Error('Up to 24 numbers in the list.');
+  return out.sort(function(a,b){return a-b;});
+}
+function rebuildListMeta(){
+  state.uniq = state.list.filter(function(v,i,a){return i===0 || a[i-1] !== v;});
+  state.counts = {};
+  for (var i = 0; i < state.list.length; i++){
+    state.counts[state.list[i]] = (state.counts[state.list[i]] || 0) + 1;
+  }
+}
+
+/* ----- setup phase ----- */
+function setupPresets(){
+  document.querySelectorAll('[data-preset]').forEach(function(b){
+    b.onclick = function(){
+      var p = PRESETS[+b.getAttribute('data-preset')];
+      $('listInput').value = p.list.join(', ');
+      $('nInput').value = p.n;
+    };
+  });
+}
+function renderPlayerInputs(){
+  var n = Math.max(2, Math.min(6, Math.floor(Number($('numPlayers').value) || 2)));
+  $('numPlayers').value = n;
+  var c = $('playerInputs'); c.innerHTML = '';
+  for (var i = 0; i < n; i++){
+    var wrap = document.createElement('div');
+    wrap.innerHTML =
+      '<label>Player ' + (i+1) + '</label>' +
+      '<input type="text" data-pidx="' + i + '" placeholder="Name" value="Player ' + (i+1) + '">';
+    c.appendChild(wrap);
+  }
+}
+function startGame(){
+  var listErr = $('listErr'); listErr.style.display = 'none';
+  var playerErr = $('playerErr'); playerErr.style.display = 'none';
+  var list;
+  try { list = parseList($('listInput').value); }
+  catch(e){ listErr.textContent = e.message; listErr.style.display = 'block'; return; }
+  var N = Math.max(1, Math.min(list.length, Math.floor(Number($('nInput').value) || 1)));
+
+  var nameInputs = document.querySelectorAll('#playerInputs input');
+  var names = [];
+  for (var i = 0; i < nameInputs.length; i++){
+    var nm = (nameInputs[i].value || '').trim();
+    if (!nm){ playerErr.textContent = 'Every player needs a name.'; playerErr.style.display='block'; return; }
+    if (names.indexOf(nm) !== -1){ playerErr.textContent = 'Player names must be unique.'; playerErr.style.display='block'; return; }
+    names.push(nm);
+  }
+
+  state.list = list; state.N = N;
+  rebuildListMeta();
+  state.players = names.map(function(nm){ return {name:nm, combo:[], sum:0, eliminated:false}; });
+  state.comboIdx = 0;
+  state.qLog = [];
+  state.winner = null;
+
+  goPhase('combo');
+  showComboOverlay();
+}
+
+/* ----- combo entry phase ----- */
+function showComboOverlay(){
+  var p = state.players[state.comboIdx];
+  $('overlayName').textContent = p.name;
+  $('overlayName2').textContent = p.name;
+  $('comboOverlay').style.display = 'flex';
+  $('comboPicker').style.display = 'none';
+}
+function startComboPick(){
+  var p = state.players[state.comboIdx];
+  p.combo = [];
+  $('comboPlayerName').textContent = p.name;
+  $('comboMaxN').textContent = state.N;
+  $('comboOverlay').style.display = 'none';
+  $('comboPicker').style.display = '';
+  renderComboPicker();
+}
+function renderComboPicker(){
+  var p = state.players[state.comboIdx];
+  var availBox = $('comboAvailable'); availBox.innerHTML = '';
+  state.uniq.forEach(function(v){
+    var taken = countOf(p.combo, v);
+    var max = state.counts[v];
+    var canTake = (taken < max) && (p.combo.length < state.N);
+    var t = document.createElement('span');
+    t.className = 'tok btnlike' + (canTake ? '' : ' disabled');
+    t.textContent = v + (max > 1 ? ' (×' + max + ')' : '');
+    if (canTake){
+      t.onclick = function(){
+        p.combo.push(v);
+        p.combo.sort(function(a,b){return a-b;});
+        renderComboPicker();
+      };
+    }
+    availBox.appendChild(t);
+  });
+
+  var cur = $('comboCurrent'); cur.innerHTML = '';
+  if (p.combo.length === 0){
+    var empty = document.createElement('span'); empty.className='lbl'; empty.textContent='— empty —';
+    cur.appendChild(empty);
+  } else {
+    p.combo.forEach(function(v, i){
+      var t = document.createElement('span');
+      t.className = 'tok removable';
+      t.textContent = v;
+      t.title = 'Remove';
+      t.onclick = function(){ p.combo.splice(i, 1); renderComboPicker(); };
+      cur.appendChild(t);
+    });
+  }
+  $('comboSum').textContent = sumOf(p.combo);
+  $('comboSize').textContent = p.combo.length;
+  $('comboDoneBtn').disabled = (p.combo.length === 0);
+}
+function finishCurrentCombo(){
+  var p = state.players[state.comboIdx];
+  if (p.combo.length === 0) return;
+  p.sum = sumOf(p.combo);
+  state.comboIdx++;
+  if (state.comboIdx >= state.players.length){
+    /* all combos entered — go to game */
+    state.turnIdx = 0;
+    goPhase('game');
+    renderGame();
+  } else {
+    showComboOverlay();
+  }
+}
+
+/* ----- game phase ----- */
+function aliveCount(){ return state.players.filter(function(p){return !p.eliminated;}).length; }
+function nextTurn(){
+  do {
+    state.turnIdx = (state.turnIdx + 1) % state.players.length;
+  } while (state.players[state.turnIdx].eliminated && aliveCount() > 0);
+  if (aliveCount() <= 1) endGame();
+  else renderGame();
+}
+function renderGame(){
+  var panel = $('playersPanel'); panel.innerHTML = '';
+  state.players.forEach(function(p, i){
+    var c = document.createElement('div');
+    c.className = 'playerCard' + (i === state.turnIdx ? ' turn' : '') + (p.eliminated ? ' elim' : '');
+    var name = document.createElement('div'); name.className = 'pname'; name.textContent = p.name;
+    var sum = document.createElement('div'); sum.className = 'psum'; sum.textContent = 'Sum: ' + p.sum;
+    c.appendChild(name); c.appendChild(sum);
+    if (p.eliminated){
+      var rev = document.createElement('div'); rev.className = 'pcombo';
+      p.combo.forEach(function(v){
+        var t = document.createElement('span'); t.className = 'tok sm'; t.textContent = v;
+        rev.appendChild(t);
+      });
+      c.appendChild(rev);
+    }
+    panel.appendChild(c);
+  });
+  $('turnPlayerName').textContent = state.players[state.turnIdx].name;
+  renderQLog();
+}
+function renderQLog(){
+  var box = $('qLog'); box.innerHTML = '';
+  if (state.qLog.length === 0){
+    box.innerHTML = '<div class="qEntry"><span class="lbl">The game has started. All answers and accusations will appear here.</span></div>';
+    return;
+  }
+  /* show most recent first */
+  for (var i = state.qLog.length - 1; i >= 0; i--){
+    var e = state.qLog[i];
+    var d = document.createElement('div'); d.className = 'qEntry';
+    d.innerHTML = e.html;
+    box.appendChild(d);
+  }
+}
+function logEntry(html){
+  state.qLog.push({html:html});
+}
+
+/* ----- ask question modal ----- */
+function openAskModal(){
+  var asker = state.players[state.turnIdx];
+  state.askTarget = null;
+  state.askValues = [];
+  $('askAsker').textContent = asker.name;
+  $('askSubmitBtn').disabled = true;
+
+  var targets = $('askTargets'); targets.innerHTML = '';
+  state.players.forEach(function(p, i){
+    if (i === state.turnIdx || p.eliminated) return;
+    var b = document.createElement('button');
+    b.className = 'targetBtn';
+    b.textContent = p.name + ' (' + p.sum + ')';
+    b.onclick = function(){
+      state.askTarget = i;
+      [].slice.call(targets.children).forEach(function(o){ o.classList.remove('sel'); });
+      b.classList.add('sel');
+      updateAskSubmit();
+    };
+    targets.appendChild(b);
+  });
+
+  var vals = $('askValues'); vals.innerHTML = '';
+  state.uniq.forEach(function(v){
+    var t = document.createElement('span');
+    t.className = 'tok btnlike';
+    t.textContent = v;
+    t.onclick = function(){
+      var idx = state.askValues.indexOf(v);
+      if (idx === -1) { state.askValues.push(v); t.classList.add('sel'); }
+      else { state.askValues.splice(idx, 1); t.classList.remove('sel'); }
+      renderAskSelected();
+      updateAskSubmit();
+    };
+    vals.appendChild(t);
+  });
+  renderAskSelected();
+  $('askModal').style.display = 'flex';
+}
+function renderAskSelected(){
+  var box = $('askSelectedView'); box.innerHTML = '';
+  if (state.askValues.length === 0){
+    var e = document.createElement('span'); e.className='lbl'; e.textContent='— nothing selected yet —';
+    box.appendChild(e);
+    return;
+  }
+  state.askValues.slice().sort(function(a,b){return a-b;}).forEach(function(v){
+    var t = document.createElement('span'); t.className='tok sm'; t.textContent = v;
+    box.appendChild(t);
+  });
+}
+function updateAskSubmit(){
+  $('askSubmitBtn').disabled = (state.askTarget === null || state.askValues.length === 0);
+}
+function submitAsk(){
+  var asker = state.players[state.turnIdx];
+  var target = state.players[state.askTarget];
+  var values = state.askValues.slice().sort(function(a,b){return a-b;});
+  var answer = multisetIncludes(target.combo, values);
+
+  var valsHtml = values.map(function(v){return '<span class="tok sm">'+v+'</span>';}).join(' ');
+  var ansHtml = answer
+    ? '<span class="ans-yes">Yes ✓</span>'
+    : '<span class="ans-no">No ✗</span>';
+  var html = '<span class="who">' + asker.name + '</span> ← <span class="who">' + target.name + '</span>: ' + valsHtml + ' — ' + ansHtml;
+
+  /* automatic reveal rule: yes-answer covering values summing to target's announced sum */
+  var autoReveal = answer && (sumOf(values) === target.sum);
+  if (autoReveal){
+    target.eliminated = true;
+    html += '<div class="autoreveal">↳ The asked values sum to ' + target.name + "'s announced sum — combination auto-revealed. " + target.name + ' is eliminated.</div>';
+  }
+  logEntry(html);
+
+  $('askModal').style.display = 'none';
+  nextTurn();
+}
+
+/* ----- accuse modal ----- */
+function openAccuseModal(){
+  var asker = state.players[state.turnIdx];
+  state.accuseTarget = null;
+  state.accuseValues = [];
+  $('accuseAsker').textContent = asker.name;
+  $('accuseSubmitBtn').disabled = true;
+  $('accuseAfterTarget').style.display = 'none';
+
+  var targets = $('accuseTargets'); targets.innerHTML = '';
+  state.players.forEach(function(p, i){
+    if (i === state.turnIdx || p.eliminated) return;
+    var b = document.createElement('button');
+    b.className = 'targetBtn';
+    b.textContent = p.name + ' (' + p.sum + ')';
+    b.onclick = function(){
+      state.accuseTarget = i;
+      state.accuseValues = [];
+      [].slice.call(targets.children).forEach(function(o){ o.classList.remove('sel'); });
+      b.classList.add('sel');
+      $('accuseTargetSum').textContent = p.sum;
+      $('accuseSumNeeded').textContent = p.sum;
+      $('accuseAfterTarget').style.display = '';
+      renderAccuseTokens();
+      updateAccuseSubmit();
+    };
+    targets.appendChild(b);
+  });
+  $('accuseModal').style.display = 'flex';
+}
+function renderAccuseTokens(){
+  var vals = $('accuseValues'); vals.innerHTML = '';
+  state.uniq.forEach(function(v){
+    var taken = countOf(state.accuseValues, v);
+    var max = state.counts[v];
+    var canTake = (taken < max) && (state.accuseValues.length < state.N);
+    var t = document.createElement('span');
+    t.className = 'tok btnlike' + (canTake ? '' : ' disabled');
+    t.textContent = v + (max > 1 ? ' (×' + max + ')' : '');
+    if (canTake){
+      t.onclick = function(){
+        state.accuseValues.push(v);
+        state.accuseValues.sort(function(a,b){return a-b;});
+        renderAccuseTokens();
+        renderAccuseSelected();
+        updateAccuseSubmit();
+      };
+    }
+    vals.appendChild(t);
+  });
+}
+function renderAccuseSelected(){
+  var box = $('accuseSelectedView'); box.innerHTML = '';
+  if (state.accuseValues.length === 0){
+    var e = document.createElement('span'); e.className='lbl'; e.textContent='— empty —';
+    box.appendChild(e);
+  } else {
+    state.accuseValues.forEach(function(v, idx){
+      var t = document.createElement('span'); t.className='tok sm btnlike removable'; t.textContent = v;
+      t.title = 'Remove';
+      t.onclick = function(){
+        state.accuseValues.splice(idx, 1);
+        renderAccuseTokens();
+        renderAccuseSelected();
+        updateAccuseSubmit();
+      };
+      box.appendChild(t);
+    });
+  }
+  $('accuseSumView').textContent = sumOf(state.accuseValues);
+}
+function updateAccuseSubmit(){
+  var target = state.players[state.accuseTarget];
+  if (!target){ $('accuseSubmitBtn').disabled = true; return; }
+  var sumMatches = sumOf(state.accuseValues) === target.sum;
+  $('accuseSubmitBtn').disabled = !sumMatches;
+}
+function submitAccuse(){
+  var asker = state.players[state.turnIdx];
+  var target = state.players[state.accuseTarget];
+  var guess = state.accuseValues.slice().sort(function(a,b){return a-b;});
+  var correct = deepEqualSorted(guess, target.combo);
+
+  var guessHtml = guess.map(function(v){return '<span class="tok sm">'+v+'</span>';}).join(' ');
+  var html;
+  if (correct){
+    target.eliminated = true;
+    html = '<span class="who">' + asker.name + '</span> accused <span class="who">' + target.name + '</span> of holding ' + guessHtml +
+           ' — <span class="accusation correct">Correct! ' + target.name + ' is eliminated.</span>';
+  } else {
+    asker.eliminated = true;
+    html = '<span class="who">' + asker.name + '</span> accused <span class="who">' + target.name + '</span> of holding ' + guessHtml +
+           ' — <span class="accusation">Wrong! ' + asker.name + " is eliminated. " + target.name + "'s actual combination: " +
+           target.combo.map(function(v){return '<span class="tok sm">'+v+'</span>';}).join(' ') + '</span>';
+  }
+  logEntry(html);
+  $('accuseModal').style.display = 'none';
+  nextTurn();
+}
+
+/* ----- end phase ----- */
+function endGame(){
+  var alive = state.players.filter(function(p){return !p.eliminated;});
+  state.winner = alive.length === 1 ? alive[0] : null;
+  goPhase('end');
+  $('winnerName').textContent = state.winner ? state.winner.name : '— no winner —';
+  var list = $('revealList'); list.innerHTML = '';
+  state.players.forEach(function(p){
+    var c = document.createElement('div');
+    c.className = 'revealCard' + (p === state.winner ? ' winner' : '');
+    var nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = p.name + (p.eliminated ? ' (eliminated)' : ' (winner)');
+    var sm = document.createElement('span'); sm.className = 'sm'; sm.textContent = 'Sum ' + p.sum;
+    var ct = document.createElement('span'); ct.className = 'ct';
+    p.combo.forEach(function(v){
+      var t = document.createElement('span'); t.className='tok sm'; t.textContent = v;
+      ct.appendChild(t);
+    });
+    c.appendChild(nm); c.appendChild(sm); c.appendChild(ct);
+    list.appendChild(c);
+  });
+}
+function newGameSamePlayers(){
+  state.players.forEach(function(p){ p.combo=[]; p.sum=0; p.eliminated=false; });
+  state.comboIdx = 0; state.turnIdx = 0; state.qLog = []; state.winner = null;
+  goPhase('combo');
+  showComboOverlay();
+}
+function resetAll(){
+  state.phase = 'setup';
+  goPhase('setup');
+}
+
+/* ----- phase switching ----- */
+function goPhase(p){
+  state.phase = p;
+  ['setup','combo','game','end'].forEach(function(name){
+    var el = $(name + 'Phase');
+    if (el) el.style.display = (name === p) ? '' : 'none';
+  });
+}
+
+/* ----- wiring ----- */
+setupPresets();
+$('numPlayers').addEventListener('input', renderPlayerInputs);
+renderPlayerInputs();
+$('startGameBtn').onclick = startGame;
+$('overlayReadyBtn').onclick = startComboPick;
+$('comboClearBtn').onclick = function(){
+  state.players[state.comboIdx].combo = [];
+  renderComboPicker();
+};
+$('comboDoneBtn').onclick = finishCurrentCombo;
+$('askBtn').onclick = openAskModal;
+$('accuseBtn').onclick = openAccuseModal;
+$('askCancelBtn').onclick = function(){ $('askModal').style.display = 'none'; };
+$('askSubmitBtn').onclick = submitAsk;
+$('accuseCancelBtn').onclick = function(){ $('accuseModal').style.display = 'none'; };
+$('accuseSubmitBtn').onclick = submitAccuse;
+$('newGameBtn').onclick = newGameSamePlayers;
+$('resetAllBtn').onclick = resetAll;
+
+/* default to Classic preset on first load */
+$('listInput').value = PRESETS[1].list.join(', ');
+$('nInput').value = PRESETS[1].n;
+
+})();
+</script>
+</body>
+</html>

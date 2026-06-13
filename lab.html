@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hidden Sub-Set — Decomposition Lab</title>
+<meta name="description" content="Interactive lab: build a custom list, view the decomposition spectrum, run an investigation simulator, and explore subset-sum counting through rotating epicycles.">
+<meta property="og:title" content="Hidden Sub-Set · Decomposition Lab">
+<meta property="og:description" content="Interactive lab for the Hidden Sub-Set deduction game and the Fourier-style subset-sum counting engine behind it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Assistant:wght@400;600;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FBFAF4;
+  --grid:rgba(96,148,201,.14);
+  --graphite:#26262E;
+  --pencil:#5A5A64;
+  --ink:#1D43BD;
+  --redpencil:#C8362B;
+  --marker:#F9E37A;
+  --teal:#1D9E75;
+  --purple:#7F77DD;
+  --token-bg:#FFFFFF;
+  --token-border:#B9B5A6;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:'Assistant',sans-serif;
+  color:var(--graphite);
+  background:var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:24px 24px;
+  font-size:17px;
+  line-height:1.65;
+}
+.page{max-width:980px;margin:0 auto;padding:0 22px 90px}
+
+header{padding:46px 0 8px}
+.eyebrow{font-size:13px;letter-spacing:.08em;font-weight:700;color:var(--ink);margin-bottom:8px}
+h1{font-family:'Frank Ruhl Libre',serif;font-weight:900;font-size:clamp(34px,6vw,52px);line-height:1.05}
+.tagline{font-size:17px;color:var(--pencil);max-width:44em;margin-top:6px}
+
+h2{
+  font-family:'Frank Ruhl Libre',serif;font-weight:700;font-size:25px;
+  margin:0 0 14px;display:flex;align-items:center;gap:12px;
+}
+h2::after{content:"";flex:1;height:1px;background:var(--token-border);opacity:.6}
+h2 .step{
+  font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:#fff;
+  background:var(--ink);border-radius:999px;width:26px;height:26px;
+  display:inline-flex;align-items:center;justify-content:center;flex:none;
+}
+
+.card{
+  background:rgba(255,255,255,.78);
+  border:1px solid var(--token-border);
+  border-radius:10px;padding:20px 22px;margin-top:26px;
+}
+
+/* tokens */
+.tok{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:34px;height:34px;padding:0 8px;
+  background:var(--token-bg);
+  border:1.5px solid var(--token-border);border-bottom-width:3px;border-radius:7px;
+  font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:16px;color:var(--graphite);
+}
+.tok.sm{min-width:26px;height:26px;font-size:13px;border-radius:5px;padding:0 5px}
+.tok.ink{border-color:var(--ink);color:var(--ink)}
+.tok.btnlike{cursor:pointer;user-select:none}
+.tok.btnlike:hover{border-color:var(--ink)}
+.tok.sel{background:var(--marker);border-color:var(--graphite)}
+
+/* inputs & buttons */
+input[type=text],input[type=number]{
+  font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:500;
+  border:1.5px solid var(--token-border);border-radius:7px;
+  padding:8px 12px;background:#fff;color:var(--graphite);
+  direction:ltr;text-align:left;
+}
+input[type=text]:focus,input[type=number]:focus{outline:none;border-color:var(--ink)}
+button{
+  font-family:'Assistant',sans-serif;font-weight:700;font-size:15px;
+  border:1.5px solid var(--token-border);border-bottom-width:3px;border-radius:7px;
+  background:#fff;color:var(--graphite);padding:7px 16px;cursor:pointer;
+}
+button:hover{border-color:var(--ink);color:var(--ink)}
+button.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+button.primary:hover{background:#163394;color:#fff}
+button.danger{color:var(--redpencil)}
+button.danger:hover{border-color:var(--redpencil)}
+button.small{font-size:13px;padding:4px 10px;border-bottom-width:2px}
+button:disabled{opacity:.4;cursor:default}
+
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lbl{font-size:14px;font-weight:600;color:var(--pencil)}
+.err{color:var(--redpencil);font-weight:600;font-size:15px;margin-top:8px;display:none}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:16px}
+.stat{border-top:2px solid var(--token-border);padding-top:5px;font-size:13px;color:var(--pencil)}
+.stat b{display:block;font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;color:var(--ink)}
+
+/* spectrum */
+.spectrum-wrap{overflow-x:auto;padding-bottom:6px}
+.spectrum{display:flex;align-items:flex-end;gap:3px;height:150px;min-width:max-content}
+.scol{
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+  height:100%;cursor:pointer;min-width:30px;border-radius:5px;padding:2px 1px 0;
+}
+.scol:hover{background:rgba(29,67,189,.07)}
+.scol.active{background:rgba(249,227,122,.55)}
+.scol .bar{width:100%;border-radius:3px 3px 0 0;background:#CBC7BA}
+.scol.active .bar{background:var(--ink)}
+.scol .cnt{font-size:11px;color:var(--pencil);font-family:'IBM Plex Mono',monospace}
+.scol .sum{font-size:12px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--graphite)}
+.hint{font-size:14px;color:var(--pencil);margin-top:8px}
+
+/* investigations */
+.invtabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.invtab{
+  display:inline-flex;align-items:center;gap:8px;
+  border:1.5px solid var(--token-border);border-bottom-width:3px;border-radius:8px;
+  background:#fff;padding:5px 12px;cursor:pointer;font-weight:600;font-size:15px;
+}
+.invtab.active{background:var(--marker);border-color:var(--graphite)}
+.invtab .x{color:var(--redpencil);font-weight:900;padding:0 2px}
+.invtab .x:hover{transform:scale(1.2)}
+.invsum{font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--ink)}
+
+.qa-zone{border:1px dashed var(--token-border);border-radius:8px;padding:14px 16px;margin-top:14px;background:rgba(255,255,255,.6)}
+.qa-zone .toks{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 12px}
+
+.constraints{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.constraint{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:14px;font-weight:600;border-radius:999px;padding:4px 12px;
+  border:1.5px solid;
+}
+.constraint.yes{border-color:var(--teal);color:var(--teal);background:rgba(29,158,117,.07)}
+.constraint.no{border-color:var(--redpencil);color:var(--redpencil);background:rgba(200,54,43,.06)}
+.constraint .x{cursor:pointer;font-weight:900}
+
+.bigcount{font-family:'IBM Plex Mono',monospace;font-size:34px;font-weight:700;color:var(--ink)}
+.bigcount.zero{color:var(--redpencil)}
+
+/* certainties & insights */
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:14px}
+.factbox{border-radius:8px;padding:12px 14px;font-size:14px}
+.factbox.has{background:rgba(29,158,117,.08);border:1px solid rgba(29,158,117,.4)}
+.factbox.not{background:rgba(200,54,43,.07);border:1px solid rgba(200,54,43,.35)}
+.factbox.ask{background:rgba(29,67,189,.06);border:1px solid rgba(29,67,189,.3)}
+.factbox .t{font-weight:700;margin-bottom:6px;display:block}
+.factbox.has .t{color:var(--teal)}
+.factbox.not .t{color:var(--redpencil)}
+.factbox.ask .t{color:var(--ink)}
+.factbox .toks{display:flex;flex-wrap:wrap;gap:5px}
+
+/* presence bars */
+.presence{margin-top:16px}
+.prow{display:flex;align-items:center;gap:10px;margin-bottom:5px}
+.prow .pv{font-family:'IBM Plex Mono',monospace;font-weight:700;min-width:34px;text-align:center}
+.prow .ptrack{flex:1;height:12px;background:rgba(0,0,0,.06);border-radius:6px;overflow:hidden}
+.prow .pfill{height:100%;border-radius:6px;background:var(--purple)}
+.prow .ppct{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--pencil);min-width:46px}
+
+/* candidates */
+.cands{margin-top:14px;max-height:340px;overflow-y:auto;border:1px solid var(--token-border);border-radius:8px;background:#fff;padding:10px 12px}
+.cand{display:flex;align-items:center;gap:5px;padding:5px 0;border-bottom:1px dashed rgba(0,0,0,.08);flex-wrap:wrap}
+.cand:last-child{border-bottom:none}
+
+/* engine */
+.engine-flex{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.engine-canvas{flex:1 1 380px;display:flex;justify-content:center}
+canvas{max-width:100%;border:1px solid var(--token-border);border-radius:8px;background:#fff}
+#cv{cursor:zoom-in}
+.engine-side{flex:1 1 260px;min-width:240px}
+.detector{
+  background:rgba(127,119,221,.08);border:1px solid rgba(127,119,221,.4);
+  border-radius:8px;padding:14px 16px;margin-top:14px;
+}
+.detector .est{font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:700;color:var(--purple)}
+.detector .truth{font-size:13px;color:var(--pencil)}
+input[type=range]{width:100%;accent-color:var(--ink)}
+
+/* viewing-frame selector — three buttons in a row */
+.modegrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:14px}
+.modebtn{
+  padding:7px 6px;font-weight:700;font-size:13px;
+  border-radius:8px;border:1.5px solid var(--token-border);border-bottom-width:3px;
+  background:#fff;color:var(--graphite);cursor:pointer;
+  display:flex;flex-direction:column;gap:2px;align-items:center;text-align:center;line-height:1.1;
+}
+.modebtn:hover{border-color:var(--ink);color:var(--ink)}
+.modebtn.on{background:var(--marker);border-color:var(--graphite);color:var(--graphite)}
+.modebtn.on:hover{color:var(--graphite)}
+.modebtn .modetop{font-weight:700;font-size:13px}
+.modebtn .modesub{font-size:11px;color:var(--pencil);font-weight:600;font-family:'IBM Plex Mono',monospace}
+.modebtn.on .modesub{color:var(--graphite)}
+
+/* X(t) strip chart */
+.chart-wrap{margin-top:20px;padding-top:18px;border-top:1px dashed var(--token-border)}
+.chart-wrap .chart-title{
+  font-family:'Frank Ruhl Libre',serif;font-weight:700;font-size:17px;margin-bottom:8px;
+}
+.chart-wrap .chart-sub{font-size:13px;color:var(--pencil);margin-bottom:10px;max-width:54em}
+#xtCanvas{display:block;width:100%;max-width:100%;height:auto;background:#fff;border:1px solid var(--token-border);border-radius:8px}
+
+.note{
+  margin:16px 0 0;padding:10px 14px;border-left:3px solid var(--ink);
+  background:rgba(29,67,189,.05);font-size:14px;color:var(--graphite);border-radius:0;
+}
+footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--token-border);font-size:14px;color:var(--pencil)}
+.sig{font-family:'Frank Ruhl Libre',serif;font-weight:700;color:var(--graphite)}
+
+/* Mobile (≤720px): pack the engine + chart into one screenful without changing the desktop layout.
+   Strategy: cap both canvases with vh so they leave room for each other, drop ancillary explainers,
+   and turn the side panel into a tight column. Desktop layout above is untouched. */
+@media (max-width:720px){
+  .page{padding:0 14px 60px}
+  .card{padding:14px 14px;margin-top:18px}
+  h2{font-size:20px;margin-bottom:10px}
+  h2 .step{width:22px;height:22px;font-size:13px}
+  h3{font-size:18px;margin-top:18px}
+
+  #engineCard p.hint{font-size:13px;line-height:1.45;margin-bottom:8px}
+
+  .engine-flex{gap:8px}
+  .engine-canvas,.engine-side{flex:1 1 100%;min-width:0}
+  .engine-canvas canvas{max-height:34vh;width:auto;height:auto}
+
+  .engine-side .row{margin:0}
+  .engine-side .note{display:none}
+  .engine-side input[type=range]{margin-top:6px}
+  .modegrid{margin-top:8px;gap:4px}
+  .modebtn{padding:5px 4px}
+  .modebtn .modetop{font-size:11px}
+  .modebtn .modesub{font-size:10px}
+  .detector{padding:8px 12px;margin-top:8px}
+  .detector .lbl{font-size:12px}
+  .detector .est{font-size:22px;line-height:1.1;margin:1px 0 0}
+  .detector .truth{font-size:11px;margin:1px 0 0}
+
+  .chart-wrap{margin-top:10px;padding-top:10px}
+  .chart-wrap .chart-title{font-size:13px;margin-bottom:2px}
+  .chart-wrap .chart-sub{display:none}
+  #xtCanvas{max-height:20vh}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <div class="eyebrow">Hidden Sub-Set · Decomposition Lab &amp; Investigation Simulator</div>
+  <h1>The Decomposition Lab</h1>
+  <p class="tagline">Define a number list, view the full decomposition spectrum, open an investigation on any sum — and simulate the game's questions until the secret combination is exposed. Below: the epicycle engine that demonstrates the same counting through rotating phasors.</p>
+</header>
+
+<!-- ============ 1. list setup ============ -->
+<div class="card">
+  <h2><span class="step">1</span>The List</h2>
+  <div class="row" style="margin-bottom:12px">
+    <span class="lbl">Ready-made lists:</span>
+    <button class="small" data-preset="0">Level 1 · Warmup</button>
+    <button class="small" data-preset="1">Level 2 · Classic</button>
+    <button class="small" data-preset="2">Level 3 · Expert</button>
+    <button class="small" data-preset="3">Demo 1,2,3,4</button>
+    <button class="small" data-preset="4">Demo 2,3,5,7</button>
+  </div>
+  <div class="row">
+    <input type="text" id="listInput" style="flex:1;min-width:240px" placeholder="1, 2, 3, 4, 5, 5, 6 ...">
+    <span class="lbl">Max N:</span>
+    <input type="number" id="nInput" min="1" max="24" value="6" style="width:74px">
+    <button class="primary" id="buildBtn">Compute</button>
+  </div>
+  <div class="err" id="errMsg"></div>
+  <div class="stats" id="statsRow" style="display:none">
+    <div class="stat"><b id="stTotal">—</b>Possible combinations</div>
+    <div class="stat"><b id="stMax">—</b>Peak decompositions per sum</div>
+    <div class="stat"><b id="stProtected">—</b>Protected sums (90%+ of peak)</div>
+    <div class="stat"><b id="stRange">—</b>Range of possible sums</div>
+  </div>
+</div>
+
+<!-- ============ 2. spectrum ============ -->
+<div class="card" id="spectrumCard" style="display:none">
+  <h2><span class="step">2</span>The Decomposition Spectrum</h2>
+  <p class="hint" style="margin:0 0 12px">Each column — a possible sum; the height — the number of ways to build it (combinations of up to N numbers, duplicates counted once). <b>Click a sum to select it.</b></p>
+  <div class="spectrum-wrap"><div class="spectrum" id="spectrum"></div></div>
+  <div class="row" style="margin-top:12px">
+    <span class="lbl">Selected sum:</span>
+    <span class="invsum" id="selSumLbl" style="font-size:22px">—</span>
+    <button id="openInvBtn" disabled>→ Open an investigation on this sum</button>
+  </div>
+</div>
+
+<!-- ============ 3. investigations ============ -->
+<div class="card" id="invCard" style="display:none">
+  <h2><span class="step">3</span>The Investigation Room</h2>
+  <p class="hint" style="margin:0 0 12px">Each tab — one opponent who announced a sum. Add the answers you heard at the table, and the lab will shrink the suspect list and tell you what's already certain and which value is best to ask about next.</p>
+  <div class="invtabs" id="invTabs"></div>
+  <div id="invBody"></div>
+</div>
+
+<!-- ============ 4. engine ============ -->
+<div class="card" id="engineCard" style="display:none">
+  <h2><span class="step">4</span>The Epicycle Engine</h2>
+  <p class="hint" style="margin:0 0 12px">Every possible sum is a phasor rotating at the speed of its sum, with length equal to its decomposition count. A Fourier detector "listens" to the frequency of the selected sum, and its running average converges exactly to that count.</p>
+  <div class="engine-flex">
+    <div class="engine-canvas"><canvas id="cv" width="520" height="440"></canvas></div>
+    <div class="engine-side">
+      <div class="row">
+        <button id="playBtn" style="width:56px">⏸</button>
+        <span class="lbl">Speed</span>
+      </div>
+      <input type="range" id="speed" min="0.02" max="5" step="0.01" value="1.5" style="margin-top:8px">
+      <div class="modegrid">
+        <button id="modeBtn0" class="modebtn modesel on" data-mode="0">
+          <span class="modetop">Lab frame</span>
+          <span class="modesub" dir="ltr">ω = 0</span>
+        </button>
+        <button id="modeBtn1" class="modebtn modesel" data-mode="1">
+          <span class="modetop">Symmetric</span>
+          <span class="modesub" dir="ltr">ω = S/2</span>
+        </button>
+        <button id="modeBtn2" class="modebtn modesel" data-mode="2">
+          <span class="modetop">S-frame</span>
+          <span class="modesub" dir="ltr">ω = S</span>
+        </button>
+      </div>
+      <div class="detector">
+        <div class="lbl">Fourier detector — listening to frequency <span class="invsum" id="engTargetLbl">—</span></div>
+        <div class="est" id="estLbl">—</div>
+        <div class="truth">Running average of f(t)·e<sup>−2πiSt</sup> · true value: <b id="truthLbl">—</b> decompositions</div>
+      </div>
+      <div class="note">The engine respects the N constraint — it runs precisely on the legal family of game combinations, not on all subsets.</div>
+    </div>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="chart-title">X of the chain tip in the rotating frame — over time</div>
+    <div class="chart-sub">The thin gray line is the instantaneous value X(t) — what's sampled each frame. The purple line is the running average of those samples. The dashed green line is the true value c<sub>S</sub>. Select "S-frame" in the engine to see geometrically where this function comes from, or "Symmetric" for an intermediate view in matched opposing rates.</div>
+    <canvas id="xtCanvas" width="900" height="200"></canvas>
+  </div>
+</div>
+
+<footer>
+  <span class="sig">Hidden Sub-Set · Decomposition Lab</span> · by <b>Elad Dafni</b> · Counting: distinct combinations (multisets) of size 1 to N · Verified against the calibrated lists (162 / 1,871 / 6,679)
+  <br>
+  <a href="index.html" style="color:var(--ink);font-weight:700;text-decoration:none">← Back to the game rules</a>
+  <span style="margin-left:18px;font-size:13px">· Released under <a href="LICENSE" style="color:var(--ink);font-weight:600;text-decoration:none">MIT (code) + CC BY 4.0 (content)</a></span>
+</footer>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- state ---------- */
+var PRESETS = [
+  {list:[1,2,3,4,5,6,7,8], n:4},
+  {list:[1,2,3,4,5,5,6,7,8,9,10,12], n:6},
+  {list:[1,2,2,3,3,4,5,5,6,7,8,9,10,11,12,15], n:6},
+  {list:[1,2,3,4], n:4},
+  {list:[2,3,5,7], n:4}
+];
+var MAX_COMBOS = 300000, MAX_SHOWN = 200;
+
+var vals = [],          // sorted list values
+    uniq = [],          // distinct values
+    Nmax = 6,
+    groups = {},        // sum -> array of subsets (arrays)
+    counts = [],        // counts[sum]
+    totalCombos = 0,
+    maxSum = 0,
+    selectedSum = null,
+    invs = [],          // {id, name, sum, constraints:[{type,values}]}
+    activeInv = null,
+    invSeq = 1;
+
+function $(id){ return document.getElementById(id); }
+
+/* ---------- enumeration (distinct multisets, size 1..N) ---------- */
+function enumerate(list, N){
+  var v = list.slice().sort(function(a,b){return a-b;});
+  var g = {}, total = 0, chosen = [];
+  function dfs(i, sum){
+    if (chosen.length > 0){
+      if (!g[sum]) g[sum] = [];
+      g[sum].push(chosen.slice());
+      total++;
+      if (total > MAX_COMBOS) throw new Error("too-many");
+    }
+    if (chosen.length === N) return;
+    for (var j = i; j < v.length; j++){
+      if (j > i && v[j] === v[j-1]) continue;
+      chosen.push(v[j]);
+      dfs(j+1, sum + v[j]);
+      chosen.pop();
+    }
+  }
+  dfs(0, 0);
+  return {groups:g, total:total};
+}
+
+/* ---------- build ---------- */
+function build(){
+  var raw = $('listInput').value.trim();
+  var err = $('errMsg');
+  err.style.display = 'none';
+  var parts = raw.split(/[\s,;]+/).filter(function(p){return p.length;});
+  var list = [];
+  for (var i = 0; i < parts.length; i++){
+    var x = Number(parts[i]);
+    if (!isFinite(x) || x !== Math.floor(x) || x < 1 || x > 999){
+      err.textContent = 'Invalid value: "' + parts[i] + '" — only integers between 1 and 999 are allowed.';
+      err.style.display = 'block'; return;
+    }
+    list.push(x);
+  }
+  if (list.length < 2){ err.textContent = 'At least two numbers are required in the list.'; err.style.display='block'; return; }
+  if (list.length > 24){ err.textContent = 'Up to 24 numbers in the list.'; err.style.display='block'; return; }
+  var N = Math.max(1, Math.min(list.length, Math.floor(Number($('nInput').value) || 1)));
+  $('nInput').value = N;
+
+  var res;
+  try { res = enumerate(list, N); }
+  catch(e){
+    err.textContent = 'List too large (more than ' + MAX_COMBOS.toLocaleString() + ' combinations). Shorten the list or reduce N.';
+    err.style.display = 'block'; return;
+  }
+
+  vals = list.slice().sort(function(a,b){return a-b;});
+  uniq = vals.filter(function(x,i){ return i === 0 || x !== vals[i-1]; });
+  Nmax = N;
+  groups = res.groups;
+  totalCombos = res.total;
+  counts = [];
+  maxSum = 0;
+  Object.keys(groups).forEach(function(s){ if (+s > maxSum) maxSum = +s; });
+  for (var s = 0; s <= maxSum; s++) counts.push(groups[s] ? groups[s].length : 0);
+
+  var mx = Math.max.apply(null, counts);
+  var argmax = 0;
+  for (s = 1; s <= maxSum; s++) if (counts[s] === mx){ argmax = s; break; }
+  var prot = [];
+  for (s = 1; s <= maxSum; s++) if (counts[s] >= 0.9*mx) prot.push(s);
+  var minSum = 0;
+  for (s = 1; s <= maxSum; s++) if (counts[s] > 0){ minSum = s; break; }
+  engineSmin = minSum || 1;
+
+  $('stTotal').textContent = totalCombos.toLocaleString();
+  $('stMax').textContent = mx.toLocaleString() + ' (at sum ' + argmax + ')';
+  $('stProtected').textContent = prot.length ? (prot[0] + '–' + prot[prot.length-1]) : '—';
+  $('stRange').textContent = minSum + '–' + maxSum;
+  $('statsRow').style.display = '';
+  $('spectrumCard').style.display = '';
+  $('engineCard').style.display = '';
+
+  // drop investigations whose sum is impossible now
+  invs = invs.filter(function(iv){ return counts[iv.sum] > 0; });
+  if (activeInv && !invs.some(function(iv){return iv.id===activeInv;})) activeInv = invs.length ? invs[0].id : null;
+  $('invCard').style.display = invs.length ? '' : 'none';
+
+  selectedSum = (selectedSum && counts[selectedSum] > 0) ? selectedSum : argmax;
+  renderSpectrum();
+  renderInvs();
+  engineRebuild();
+  save();
+}
+
+/* ---------- spectrum ---------- */
+function renderSpectrum(){
+  var box = $('spectrum');
+  box.innerHTML = '';
+  var mx = Math.max.apply(null, counts) || 1;
+  for (var s = 1; s <= maxSum; s++){
+    (function(s){
+      var col = document.createElement('div');
+      col.className = 'scol' + (s === selectedSum ? ' active' : '');
+      var cnt = document.createElement('div');
+      cnt.className = 'cnt'; cnt.textContent = counts[s] || '';
+      var bar = document.createElement('div');
+      bar.className = 'bar';
+      bar.style.height = (counts[s] === 0 ? 2 : 6 + 92*(counts[s]/mx)) + 'px';
+      if (counts[s] === 0) bar.style.background = 'transparent';
+      var lbl = document.createElement('div');
+      lbl.className = 'sum'; lbl.textContent = s;
+      col.appendChild(cnt); col.appendChild(bar); col.appendChild(lbl);
+      col.onclick = function(){
+        selectedSum = s;
+        renderSpectrum(); engineRetarget(); save();
+      };
+      box.appendChild(col);
+    })(s);
+  }
+  $('selSumLbl').textContent = selectedSum !== null ? selectedSum : '—';
+  $('openInvBtn').disabled = !(selectedSum && counts[selectedSum] > 0);
+}
+
+$('openInvBtn').onclick = function(){
+  if (!selectedSum || !counts[selectedSum]) return;
+  var iv = {id:'inv'+(invSeq++), name:'Opponent ' + (invs.length + 1), sum:selectedSum, constraints:[]};
+  invs.push(iv);
+  activeInv = iv.id;
+  $('invCard').style.display = '';
+  renderInvs(); engineRetarget(); save();
+  $('invCard').scrollIntoView({behavior:'smooth'});
+};
+
+/* ---------- constraints logic ---------- */
+function subsetHas(sub, v){ return sub.indexOf(v) !== -1; }
+function passes(sub, c){
+  var all = c.values.every(function(v){ return subsetHas(sub, v); });
+  if (c.type === 'yes') return all;        // answered "yes": has ALL asked values
+  return !all;                              // answered "no": at least one missing
+}
+function candidatesFor(iv){
+  var base = groups[iv.sum] || [];
+  return base.filter(function(sub){
+    return iv.constraints.every(function(c){ return passes(sub, c); });
+  });
+}
+
+/* ---------- investigations UI ---------- */
+function renderInvs(){
+  var tabs = $('invTabs');
+  tabs.innerHTML = '';
+  invs.forEach(function(iv){
+    var t = document.createElement('div');
+    t.className = 'invtab' + (iv.id === activeInv ? ' active' : '');
+    var nm = document.createElement('span'); nm.textContent = iv.name;
+    var sm = document.createElement('span'); sm.className = 'invsum'; sm.textContent = '= ' + iv.sum;
+    var x = document.createElement('span'); x.className = 'x'; x.textContent = '×';
+    x.title = 'Delete investigation';
+    x.onclick = function(ev){
+      ev.stopPropagation();
+      invs = invs.filter(function(o){ return o.id !== iv.id; });
+      if (activeInv === iv.id) activeInv = invs.length ? invs[0].id : null;
+      if (!invs.length) $('invCard').style.display = 'none';
+      renderInvs(); save();
+    };
+    nm.ondblclick = function(ev){
+      ev.stopPropagation();
+      var nn = prompt('Opponent name:', iv.name);
+      if (nn){ iv.name = nn; renderInvs(); save(); }
+    };
+    t.appendChild(nm); t.appendChild(sm); t.appendChild(x);
+    t.onclick = function(){ activeInv = iv.id; renderInvs(); engineRetarget(); save(); };
+    tabs.appendChild(t);
+  });
+  renderInvBody();
+}
+
+function constraintLabel(c){
+  var vs = c.values.join(' + ');
+  if (c.type === 'yes') return 'Yes — has: ' + vs;
+  return c.values.length === 1 ? 'No — missing ' + vs : 'No — at least one missing from: ' + vs;
+}
+
+function renderInvBody(){
+  var body = $('invBody');
+  body.innerHTML = '';
+  var iv = invs.find(function(o){ return o.id === activeInv; });
+  if (!iv) return;
+
+  var cands = candidatesFor(iv);
+
+  /* count headline */
+  var head = document.createElement('div');
+  head.className = 'row';
+  var bc = document.createElement('span');
+  bc.className = 'bigcount' + (cands.length === 0 ? ' zero' : '');
+  bc.textContent = cands.length.toLocaleString();
+  var bl = document.createElement('span');
+  bl.className = 'lbl';
+  bl.textContent = cands.length === 1
+    ? 'A single combination matches — go ahead and accuse!'
+    : 'Combinations still matching sum ' + iv.sum + ' and all answers';
+  head.appendChild(bc); head.appendChild(bl);
+  body.appendChild(head);
+
+  if (cands.length === 0){
+    var warn = document.createElement('div');
+    warn.className = 'err'; warn.style.display = 'block';
+    warn.textContent = 'Contradiction: no combination fits. One of the answers is wrong, or the sum is incorrect.';
+    body.appendChild(warn);
+  }
+
+  /* question builder */
+  var qa = document.createElement('div');
+  qa.className = 'qa-zone';
+  var qt = document.createElement('div');
+  qt.innerHTML = '<b>New question:</b> <span class="lbl">Mark one or more values and pick the opponent\'s answer. "Yes" = all values are held; "No" = at least one is missing.</span>';
+  qa.appendChild(qt);
+  var tk = document.createElement('div'); tk.className = 'toks';
+  var selSet = {};
+  uniq.forEach(function(v){
+    var t = document.createElement('span');
+    t.className = 'tok btnlike';
+    t.textContent = v;
+    t.onclick = function(){
+      if (selSet[v]){ delete selSet[v]; t.classList.remove('sel'); }
+      else { selSet[v] = true; t.classList.add('sel'); }
+    };
+    tk.appendChild(t);
+  });
+  qa.appendChild(tk);
+  var btnRow = document.createElement('div'); btnRow.className = 'row';
+  function addConstraint(type){
+    var vsel = Object.keys(selSet).map(Number).sort(function(a,b){return a-b;});
+    if (!vsel.length) return;
+    iv.constraints.push({type:type, values:vsel});
+    renderInvBody(); save();
+  }
+  var byes = document.createElement('button');
+  byes.textContent = 'Answer: Yes ✓'; byes.style.color = 'var(--teal)';
+  byes.onclick = function(){ addConstraint('yes'); };
+  var bno = document.createElement('button');
+  bno.textContent = 'Answer: No ✗'; bno.className = 'danger';
+  bno.onclick = function(){ addConstraint('no'); };
+  btnRow.appendChild(byes); btnRow.appendChild(bno);
+  qa.appendChild(btnRow);
+  body.appendChild(qa);
+
+  /* constraint chips */
+  if (iv.constraints.length){
+    var cl = document.createElement('div'); cl.className = 'constraints';
+    iv.constraints.forEach(function(c, idx){
+      var ch = document.createElement('span');
+      ch.className = 'constraint ' + (c.type === 'yes' ? 'yes' : 'no');
+      var tx = document.createElement('span'); tx.textContent = constraintLabel(c);
+      var x = document.createElement('span'); x.className = 'x'; x.textContent = '×';
+      x.onclick = function(){ iv.constraints.splice(idx,1); renderInvBody(); save(); };
+      ch.appendChild(tx); ch.appendChild(x);
+      cl.appendChild(ch);
+    });
+    body.appendChild(cl);
+  }
+
+  if (cands.length === 0) return;
+
+  /* certainties + best question */
+  var pres = uniq.map(function(v){
+    var k = 0;
+    for (var i = 0; i < cands.length; i++) if (subsetHas(cands[i], v)) k++;
+    return {v:v, p:k/cands.length};
+  });
+  var sure = pres.filter(function(o){ return o.p === 1; });
+  var never = pres.filter(function(o){ return o.p === 0; });
+  var open = pres.filter(function(o){ return o.p > 0 && o.p < 1; })
+                 .sort(function(a,b){ return Math.abs(a.p-0.5) - Math.abs(b.p-0.5); });
+
+  var facts = document.createElement('div'); facts.className = 'facts';
+  function factBox(cls, title, items, fmt){
+    var b = document.createElement('div'); b.className = 'factbox ' + cls;
+    var t = document.createElement('span'); t.className = 't'; t.textContent = title;
+    b.appendChild(t);
+    if (!items.length){
+      var e = document.createElement('span'); e.className = 'lbl'; e.textContent = '— none yet —';
+      b.appendChild(e);
+    } else {
+      var tw = document.createElement('div'); tw.className = 'toks';
+      items.forEach(function(o){
+        var s = document.createElement('span'); s.className = 'tok sm';
+        s.textContent = fmt ? fmt(o) : o.v;
+        tw.appendChild(s);
+      });
+      b.appendChild(tw);
+    }
+    return b;
+  }
+  facts.appendChild(factBox('has', 'Certain to hold (in every suspect)', sure));
+  facts.appendChild(factBox('not', 'Certain not to hold', never));
+  facts.appendChild(factBox('ask', 'Best to ask next (closest to 50%)', open.slice(0,3), function(o){
+    return o.v + ' · ' + Math.round(o.p*100) + '%';
+  }));
+  body.appendChild(facts);
+
+  /* presence bars */
+  if (open.length){
+    var pw = document.createElement('div'); pw.className = 'presence';
+    var pt = document.createElement('div'); pt.className = 'lbl';
+    pt.textContent = 'Probability each value is in the combination (across remaining suspects):';
+    pw.appendChild(pt);
+    pres.slice().sort(function(a,b){ return b.p - a.p; }).forEach(function(o){
+      var r = document.createElement('div'); r.className = 'prow';
+      var v = document.createElement('span'); v.className = 'pv'; v.textContent = o.v;
+      var tr = document.createElement('div'); tr.className = 'ptrack';
+      var f = document.createElement('div'); f.className = 'pfill'; f.style.width = (o.p*100) + '%';
+      if (o.p === 1) f.style.background = 'var(--teal)';
+      if (o.p === 0) f.style.background = 'transparent';
+      tr.appendChild(f);
+      var pc = document.createElement('span'); pc.className = 'ppct'; pc.textContent = Math.round(o.p*100) + '%';
+      r.appendChild(v); r.appendChild(tr); r.appendChild(pc);
+      pw.appendChild(r);
+    });
+    body.appendChild(pw);
+  }
+
+  /* candidate list */
+  var cw = document.createElement('div'); cw.className = 'cands';
+  var shown = cands.slice(0, MAX_SHOWN);
+  shown.forEach(function(sub){
+    var r = document.createElement('div'); r.className = 'cand';
+    sub.forEach(function(v){
+      var t = document.createElement('span'); t.className = 'tok sm';
+      if (sure.some(function(o){ return o.v === v; })) t.classList.add('ink');
+      t.textContent = v;
+      r.appendChild(t);
+    });
+    cw.appendChild(r);
+  });
+  if (cands.length > MAX_SHOWN){
+    var more = document.createElement('div'); more.className = 'lbl';
+    more.style.padding = '6px 0';
+    more.textContent = 'Showing ' + MAX_SHOWN + ' of ' + cands.length.toLocaleString() + ' — add answers to narrow down.';
+    cw.appendChild(more);
+  }
+  body.appendChild(cw);
+}
+
+/* ---------- epicycle engine ---------- */
+/* Pick 2-5 "nice" tick values covering a magnitude. Steps follow the 1/2/5 sequence. */
+var TICK_TEMPLATE = [1,2,5,10,20,50,100,200,500,1000,2000,5000,10000,20000,50000];
+function niceTicks(maxVal){
+  return TICK_TEMPLATE.filter(function(t){ return t >= maxVal/40 && t <= maxVal; });
+}
+
+var cv = $('cv'), ctx = cv.getContext('2d');
+var xtCv = $('xtCanvas'), xtCtx = xtCv.getContext('2d');
+var GRAY = '#9a988f', LIGHT = '#cfccc0', PURPLE = '#7F77DD', TEAL = '#1D9E75', RUST = '#C8762B', INK = '#1D43BD';
+var TRACE_MAX_SAFETY = 2200;  // upper bound to keep render snappy at very low speeds
+var engineSmin = 1;            // smallest s with counts[s]>0 — sets trail duration
+/* Three viewing frames. viewPhi rate factor = factor * S * dt.
+   Mode 0: lab — gray stationary, purple rotates +S.
+   Mode 1: symmetric — view rotates at +S/2, gray rotates -S/2, purple rotates +S/2. Avg = 0.
+   Mode 2: S-frame — purple stationary, gray rotates -S. */
+var VIEW_RATE = [0, -Math.PI, -2*Math.PI];
+var TRAIL_COLORS = [TEAL, INK, RUST];
+var engT = 0, playing = true, trace = [], acc = {re:0, im:0}, nSamp = 0, engTarget = null;
+var viewMode = 0, viewPhi = 0, chartBuf = [], CHART_MAX = 600;
+var cvZoom = 1, cvPanX = 0, cvPanY = 0;  /* mouse-wheel zoom on main canvas, dbl-click resets */
+var chartYMin = 0, chartYMax = 0;
+
+function engineTargetSum(){
+  var iv = invs.find(function(o){ return o.id === activeInv; });
+  if (iv) return iv.sum;
+  return selectedSum;
+}
+function engineRebuild(){
+  trace = []; chartBuf = []; engT = 0; viewPhi = 0;
+  cvZoom = 1; cvPanX = 0; cvPanY = 0;
+  setViewMode(0);
+  engineRetarget();
+}
+
+function setViewMode(m){
+  viewMode = m;
+  var btns = document.querySelectorAll('.modesel');
+  for (var i = 0; i < btns.length; i++){
+    if (+btns[i].getAttribute('data-mode') === viewMode) btns[i].classList.add('on');
+    else btns[i].classList.remove('on');
+  }
+}
+function engineRetarget(){
+  engTarget = engineTargetSum();
+  acc = {re:0, im:0}; nSamp = 0;
+  trace = []; chartBuf = [];
+  var truth0 = engTarget !== null ? (counts[engTarget] || 0) : 0;
+  var seed = Math.max(1, Math.abs(truth0) * 0.5);
+  chartYMin = Math.min(0, truth0) - seed;
+  chartYMax = Math.max(0, truth0) + seed;
+  $('engTargetLbl').textContent = engTarget !== null ? 'S = ' + engTarget : '—';
+  $('truthLbl').textContent = engTarget !== null ? (counts[engTarget] || 0) : '—';
+  $('estLbl').textContent = '—';
+}
+
+function engineFrame(){
+  if (maxSum > 0){
+    if (playing && engTarget !== null){
+      var sp = parseFloat($('speed').value);
+      var dt = (0.02 / maxSum) * sp;
+      engT += dt;
+      viewPhi += VIEW_RATE[viewMode] * engTarget * dt;
+      // f(t) = sum_s counts[s] * e^{2pi i s t}   (size<=N family, empty set excluded)
+      var fre = 0, fim = 0;
+      for (var s = 1; s <= maxSum; s++){
+        if (!counts[s]) continue;
+        var a = 2*Math.PI*s*engT;
+        fre += counts[s]*Math.cos(a);
+        fim += counts[s]*Math.sin(a);
+      }
+      // Demodulate: rotate f(t) by -2πSt → real part is the X in the rotating frame
+      var cS = Math.cos(2*Math.PI*engTarget*engT), sS = Math.sin(2*Math.PI*engTarget*engT);
+      var xVal = fre*cS + fim*sS;       // Re[f(t)·e^{-iSt}]
+      var yVal = fim*cS - fre*sS;       // Im[f(t)·e^{-iSt}]
+      acc.re += xVal;
+      acc.im += yVal;
+      nSamp++;
+      var runMean = acc.re/nSamp;
+      $('estLbl').textContent = runMean.toFixed(2);
+      chartBuf.push([engT, xVal, runMean]);
+      if (chartBuf.length > CHART_MAX) chartBuf.shift();
+      if (xVal < chartYMin) chartYMin = xVal;
+      if (xVal > chartYMax) chartYMax = xVal;
+    }
+    engineDraw();
+    chartDraw();
+  }
+  requestAnimationFrame(engineFrame);
+}
+
+function engineDraw(){
+  var W = cv.width, H = cv.height, cx = W/2, cy = H/2;
+  ctx.clearRect(0,0,W,H);
+  if (totalCombos === 0) return;
+  var R = Math.min(W,H)/2 - 32;
+  var unit = R / totalCombos;
+  var Stgt = engTarget !== null ? engTarget : 0;
+  var axR = R + 8;
+  var labR = axR + 9;
+  var Z = cvZoom, ZI = 1/Z;  /* compensate widths/radii/fonts so they stay visually constant */
+
+  /* Apply zoom + pan transform around canvas center. All positions below are still
+     written in "world" canvas coords; the transform scales them to screen. */
+  ctx.save();
+  ctx.translate(cx + cvPanX, cy + cvPanY);
+  ctx.scale(Z, Z);
+  ctx.translate(-cx, -cy);
+
+  /* Arm endpoints — each arm's on-screen angle = (lab angle) + viewPhi.
+     viewPhi is integrated per-mode in engineFrame, so transitions stay continuous. */
+  var x = cx, y = cy;
+  var pts = [[cx, cy, null]];
+  for (var s = 1; s <= maxSum; s++){
+    if (!counts[s]) continue;
+    var ang = 2*Math.PI*s*engT + viewPhi;
+    x += unit*counts[s]*Math.cos(ang);
+    y -= unit*counts[s]*Math.sin(ang);
+    pts.push([x, y, s]);
+  }
+  if (playing){
+    trace.push([x, y, viewMode, engT]);
+    /* Trail covers one full revolution of the slowest arm + 5° — same physical sweep
+       at every speed setting, just denser/sparser sampling. */
+    var trailDur = (1 + 5/360) / engineSmin;
+    while (trace.length && trace[0][3] < engT - trailDur) trace.shift();
+    while (trace.length > TRACE_MAX_SAFETY) trace.shift();
+  }
+
+  /* Gray "world" axes */
+  var grayAng = viewPhi;
+  var ca = Math.cos(grayAng), sa = Math.sin(grayAng);
+  ctx.strokeStyle = LIGHT; ctx.lineWidth = ZI;
+  ctx.setLineDash([3*ZI, 4*ZI]);
+  ctx.beginPath();
+  ctx.moveTo(cx - axR*ca, cy + axR*sa);
+  ctx.lineTo(cx + axR*ca, cy - axR*sa);
+  ctx.moveTo(cx + axR*sa, cy + axR*ca);
+  ctx.lineTo(cx - axR*sa, cy - axR*ca);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#9a988f';
+  ctx.font = (11*ZI) + 'px "IBM Plex Mono",monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('X₀', cx + labR*ca, cy - labR*sa + 4*ZI);
+  ctx.fillText('Y₀', cx - labR*sa, cy - labR*ca + 4*ZI);
+
+  /* Purple "S-frame" axes */
+  var purpleAng = 2*Math.PI*Stgt*engT + viewPhi;
+  var pca = Math.cos(purpleAng), psa = Math.sin(purpleAng);
+  ctx.strokeStyle = PURPLE; ctx.lineWidth = 1.5*ZI;
+  ctx.beginPath();
+  ctx.moveTo(cx - axR*pca, cy + axR*psa);
+  ctx.lineTo(cx + axR*pca, cy - axR*psa);
+  ctx.moveTo(cx + axR*psa, cy + axR*pca);
+  ctx.lineTo(cx - axR*psa, cy - axR*pca);
+  ctx.stroke();
+  ctx.fillStyle = PURPLE;
+  ctx.font = 'bold ' + (12*ZI) + 'px "IBM Plex Mono",monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('X', cx + labR*pca, cy - labR*psa + 4*ZI);
+  ctx.fillText('Y', cx - labR*psa, cy - labR*pca + 4*ZI);
+
+  /* Trail — segments coloured per recording-time view mode */
+  ctx.globalAlpha = 0.45; ctx.lineWidth = 1.4*ZI;
+  var curMode = -1;
+  for (var j = 1; j < trace.length; j++){
+    var pj = trace[j], pp = trace[j-1];
+    if (pj[2] !== curMode){
+      if (curMode !== -1) ctx.stroke();
+      ctx.strokeStyle = TRAIL_COLORS[pj[2]] || TEAL;
+      ctx.beginPath();
+      ctx.moveTo(pp[0], pp[1]);
+      curMode = pj[2];
+    }
+    ctx.lineTo(pj[0], pj[1]);
+  }
+  if (curMode !== -1) ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  /* arms */
+  for (var i = 1; i < pts.length; i++){
+    var isT = pts[i][2] === engTarget;
+    ctx.strokeStyle = isT ? PURPLE : GRAY;
+    ctx.lineWidth = (isT ? 2.4 : 1.1) * ZI;
+    ctx.globalAlpha = isT ? 1 : 0.55;
+    ctx.beginPath();
+    ctx.moveTo(pts[i-1][0], pts[i-1][1]);
+    ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  /* Tip + perpendicular drop onto the PURPLE X axis */
+  var tipX = pts[pts.length-1][0], tipY = pts[pts.length-1][1];
+  var dx = tipX - cx, dy = tipY - cy;
+  var proj = dx*pca + dy*(-psa);
+  var footX = cx + proj*pca, footY = cy - proj*psa;
+  ctx.strokeStyle = PURPLE; ctx.globalAlpha = 0.5; ctx.lineWidth = ZI;
+  ctx.setLineDash([2*ZI, 3*ZI]);
+  ctx.beginPath(); ctx.moveTo(tipX, tipY); ctx.lineTo(footX, footY); ctx.stroke();
+  ctx.setLineDash([]); ctx.globalAlpha = 1;
+  ctx.fillStyle = PURPLE;
+  ctx.beginPath(); ctx.arc(footX, footY, 4*ZI, 0, 7); ctx.fill();
+
+  ctx.fillStyle = TRAIL_COLORS[viewMode] || TEAL;
+  ctx.beginPath(); ctx.arc(tipX, tipY, 3.8*ZI, 0, 7); ctx.fill();
+  ctx.strokeStyle = LIGHT; ctx.lineWidth = ZI;
+  ctx.beginPath(); ctx.arc(cx, cy, 2.5*ZI, 0, 7); ctx.stroke();
+
+  /* Scale ticks: 4 linear, evenly-spaced marks per axis, with the step adapted to the
+     current zoom level so ticks always stay well separated and the values match the
+     visible range. As you zoom in, the step shrinks; as you zoom out, it grows. The
+     rotating-axis rule still applies — playing mode skips rotating axes; pause to see all. */
+  var visible = Math.min(W, H) / 2 / (Z * unit);  /* world value at canvas edge */
+  var rawStep = visible * 0.2;                      /* aim for 4 ticks across ~80% of view */
+  var stepExp = Math.pow(10, Math.floor(Math.log10(Math.max(rawStep, 1e-9))));
+  var stepMant = rawStep / stepExp;
+  var stepNice;
+  if (stepMant < 1.5) stepNice = stepExp;
+  else if (stepMant < 3.5) stepNice = 2 * stepExp;
+  else if (stepMant < 7.5) stepNice = 5 * stepExp;
+  else stepNice = 10 * stepExp;
+  var tickVals = [stepNice, 2*stepNice, 3*stepNice, 4*stepNice];
+  var labelDecimals = (stepNice >= 1) ? 0 : (stepNice >= 0.1 ? 1 : 2);
+  var tickLabels = tickVals.map(function(v){ return v.toFixed(labelDecimals); });
+
+  function drawAxisTicks(angRad, color){
+    var aca = Math.cos(angRad), asa = Math.sin(angRad);
+    var perpX = Math.sin(angRad), perpY = Math.cos(angRad);  /* perpendicular (CW) in canvas */
+    var tickLen = 5*ZI, labelOffset = 13*ZI;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5*ZI;
+    ctx.beginPath();
+    for (var i = 0; i < tickVals.length; i++){
+      var r = unit * tickVals[i];
+      var tx = cx + r*aca, ty = cy - r*asa;
+      ctx.moveTo(tx + tickLen*perpX, ty + tickLen*perpY);
+      ctx.lineTo(tx - tickLen*perpX, ty - tickLen*perpY);
+    }
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.font = 'bold ' + (10*ZI) + 'px "IBM Plex Mono",monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (var i = 0; i < tickVals.length; i++){
+      var r = unit * tickVals[i];
+      var tx = cx + r*aca + labelOffset*perpX;
+      var ty = cy - r*asa + labelOffset*perpY;
+      ctx.fillText(tickLabels[i], tx, ty);
+    }
+  }
+
+  if (!playing){
+    drawAxisTicks(grayAng, '#9a988f');
+    drawAxisTicks(grayAng + Math.PI/2, '#9a988f');
+    drawAxisTicks(purpleAng, PURPLE);
+    drawAxisTicks(purpleAng + Math.PI/2, PURPLE);
+  } else {
+    /* Stationary axis gets the full set; rotating one(s) stay clean. */
+    if (viewMode === 0) drawAxisTicks(grayAng, '#9a988f');
+    else if (viewMode === 2) drawAxisTicks(purpleAng, PURPLE);
+  }
+
+  ctx.restore();
+
+  /* Zoom badge in corner (drawn after restore so it stays at constant size) */
+  if (Math.abs(Z - 1) > 0.005){
+    ctx.fillStyle = '#5A5A64';
+    ctx.font = 'bold 11px "IBM Plex Mono",monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('×' + Z.toFixed(2) + '  · double-click to reset', 10, 18);
+  }
+}
+
+function chartDraw(){
+  var W = xtCv.width, H = xtCv.height;
+  if (!W || !H) return;
+  xtCtx.clearRect(0, 0, W, H);
+  xtCtx.fillStyle = '#fff';
+  xtCtx.fillRect(0, 0, W, H);
+
+  if (!chartBuf.length || engTarget === null){
+    xtCtx.fillStyle = '#9a988f';
+    xtCtx.font = '14px Assistant, sans-serif';
+    xtCtx.textAlign = 'center';
+    xtCtx.fillText('Pick a sum and watch the average converge', W/2, H/2);
+    return;
+  }
+
+  var pad = {l:56, r:14, t:24, b:30};
+  var plotW = W - pad.l - pad.r, plotH = H - pad.t - pad.b;
+
+  var truth = counts[engTarget] || 0;
+  /* Y-range is monotone: only grows, never shrinks — so the trace stays put as it scrolls */
+  var yMin = chartYMin, yMax = chartYMax;
+  var ypad = (yMax - yMin) * 0.06; if (ypad === 0) ypad = 1;
+  yMin -= ypad; yMax += ypad;
+
+  var tMin = chartBuf[0][0], tMax = chartBuf[chartBuf.length-1][0];
+  if (tMax === tMin) tMax = tMin + 1;
+
+  function px(t){ return pad.l + (t - tMin) / (tMax - tMin) * plotW; }
+  function py(y){ return pad.t + (1 - (y - yMin) / (yMax - yMin)) * plotH; }
+
+  xtCtx.strokeStyle = LIGHT; xtCtx.lineWidth = 1;
+  xtCtx.strokeRect(pad.l, pad.t, plotW, plotH);
+
+  if (0 >= yMin && 0 <= yMax){
+    xtCtx.strokeStyle = LIGHT; xtCtx.setLineDash([2,3]);
+    xtCtx.beginPath();
+    xtCtx.moveTo(pad.l, py(0)); xtCtx.lineTo(pad.l + plotW, py(0));
+    xtCtx.stroke(); xtCtx.setLineDash([]);
+    xtCtx.fillStyle = '#9a988f';
+    xtCtx.font = '11px "IBM Plex Mono",monospace';
+    xtCtx.textAlign = 'right';
+    xtCtx.fillText('0', pad.l - 5, py(0) + 4);
+  }
+
+  xtCtx.strokeStyle = TEAL; xtCtx.lineWidth = 1.5;
+  xtCtx.setLineDash([6,4]);
+  xtCtx.beginPath();
+  xtCtx.moveTo(pad.l, py(truth)); xtCtx.lineTo(pad.l + plotW, py(truth));
+  xtCtx.stroke(); xtCtx.setLineDash([]);
+  xtCtx.fillStyle = TEAL;
+  xtCtx.font = 'bold 12px "IBM Plex Mono",monospace';
+  xtCtx.textAlign = 'right';
+  xtCtx.fillText('c_S=' + truth, pad.l - 5, py(truth) + 4);
+
+  xtCtx.strokeStyle = '#b9b5a6'; xtCtx.lineWidth = 1;
+  xtCtx.beginPath();
+  for (var i = 0; i < chartBuf.length; i++){
+    var X = px(chartBuf[i][0]), Y = py(chartBuf[i][1]);
+    if (i === 0) xtCtx.moveTo(X, Y); else xtCtx.lineTo(X, Y);
+  }
+  xtCtx.stroke();
+
+  xtCtx.strokeStyle = PURPLE; xtCtx.lineWidth = 2.2;
+  xtCtx.beginPath();
+  for (var i = 0; i < chartBuf.length; i++){
+    var X = px(chartBuf[i][0]), Y = py(chartBuf[i][2]);
+    if (i === 0) xtCtx.moveTo(X, Y); else xtCtx.lineTo(X, Y);
+  }
+  xtCtx.stroke();
+
+  var last = chartBuf[chartBuf.length-1];
+  xtCtx.fillStyle = PURPLE;
+  xtCtx.beginPath(); xtCtx.arc(px(last[0]), py(last[2]), 3.5, 0, 7); xtCtx.fill();
+
+  /* legend */
+  xtCtx.font = '12px Assistant, sans-serif';
+  xtCtx.textAlign = 'left';
+  xtCtx.fillStyle = PURPLE;
+  xtCtx.fillRect(pad.l + 6, pad.t - 16, 14, 3);
+  xtCtx.fillStyle = '#26262E';
+  xtCtx.fillText('running mean → c_S', pad.l + 24, pad.t - 7);
+  xtCtx.fillStyle = '#b9b5a6';
+  xtCtx.fillRect(pad.l + 150, pad.t - 15, 14, 2);
+  xtCtx.fillStyle = '#26262E';
+  xtCtx.fillText('X(t) instantaneous', pad.l + 168, pad.t - 7);
+  xtCtx.fillStyle = '#9a988f';
+  xtCtx.textAlign = 'right';
+  xtCtx.fillText('time →', pad.l + plotW - 4, pad.t + plotH + 22);
+}
+
+$('playBtn').onclick = function(){
+  playing = !playing;
+  $('playBtn').textContent = playing ? '⏸' : '▶';
+};
+
+$('modeBtn0').onclick = function(){ setViewMode(0); };
+$('modeBtn1').onclick = function(){ setViewMode(1); };
+$('modeBtn2').onclick = function(){ setViewMode(2); };
+
+/* Mouse-wheel zoom on the main canvas, centred on cursor; dbl-click resets. */
+cv.addEventListener('wheel', function(e){
+  e.preventDefault();
+  var rect = cv.getBoundingClientRect();
+  var mx = (e.clientX - rect.left) * (cv.width / rect.width);
+  var my = (e.clientY - rect.top) * (cv.height / rect.height);
+  var oldZoom = cvZoom;
+  var factor = e.deltaY < 0 ? 1.18 : 1/1.18;
+  cvZoom = Math.max(0.5, Math.min(20, cvZoom * factor));
+  if (cvZoom === oldZoom) return;
+  var ratio = cvZoom / oldZoom;
+  var cx = cv.width/2, cy = cv.height/2;
+  cvPanX = mx - cx - ratio * (mx - cx - cvPanX);
+  cvPanY = my - cy - ratio * (my - cy - cvPanY);
+}, {passive:false});
+
+cv.addEventListener('dblclick', function(e){
+  e.preventDefault();
+  cvZoom = 1; cvPanX = 0; cvPanY = 0;
+});
+
+/* ---------- presets / wiring ---------- */
+document.querySelectorAll('[data-preset]').forEach(function(b){
+  b.onclick = function(){
+    var p = PRESETS[+b.getAttribute('data-preset')];
+    $('listInput').value = p.list.join(', ');
+    $('nInput').value = p.n;
+    selectedSum = null;
+    build();
+  };
+});
+$('buildBtn').onclick = function(){ selectedSum = null; build(); };
+$('listInput').addEventListener('keydown', function(e){ if (e.key === 'Enter'){ selectedSum = null; build(); } });
+
+/* ---------- persistence ---------- */
+function save(){
+  try{
+    localStorage.setItem('hidden-subset-lab', JSON.stringify({
+      list: $('listInput').value, n: $('nInput').value,
+      selectedSum: selectedSum, invs: invs, activeInv: activeInv, invSeq: invSeq
+    }));
+  }catch(e){}
+}
+function restore(){
+  try{
+    var d = JSON.parse(localStorage.getItem('hidden-subset-lab'));
+    if (!d || !d.list) return false;
+    $('listInput').value = d.list;
+    $('nInput').value = d.n || 6;
+    selectedSum = d.selectedSum || null;
+    invs = Array.isArray(d.invs) ? d.invs : [];
+    activeInv = d.activeInv || null;
+    invSeq = d.invSeq || (invs.length + 1);
+    return true;
+  }catch(e){ return false; }
+}
+
+/* ---------- boot ---------- */
+if (!restore()){
+  $('listInput').value = PRESETS[1].list.join(', ');
+  $('nInput').value = PRESETS[1].n;
+}
+build();
+engineFrame();
+
+})();
+</script>
+</body>
+</html>

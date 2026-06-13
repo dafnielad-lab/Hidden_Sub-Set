@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hidden Sub-Set — A Mathematical Deduction Game</title>
+<meta name="description" content="A pencil-and-paper deduction game where every player hides behind a sum, and the others must crack the exact subset that produced it.">
+<meta property="og:title" content="Hidden Sub-Set">
+<meta property="og:description" content="A mathematical deduction game where players hide behind sums and the others crack the subsets.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Assistant:wght@400;600;700&family=IBM+Plex+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#FBFAF4;
+  --grid:rgba(96,148,201,.16);
+  --graphite:#26262E;
+  --pencil:#5A5A64;
+  --ink:#1D43BD;
+  --redpencil:#C8362B;
+  --marker:#F9E37A;
+  --token-bg:#FFFFFF;
+  --token-border:#B9B5A6;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Assistant',sans-serif;
+  color:var(--graphite);
+  background:var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:24px 24px;
+  font-size:18px;
+  line-height:1.75;
+}
+.page{
+  max-width:760px;
+  margin:0 auto;
+  padding:0 28px 96px;
+  border-left:2px solid rgba(200,54,43,.45);
+}
+@media(max-width:820px){.page{border-left:none}}
+
+/* ---------- hero ---------- */
+header{padding:72px 0 40px}
+.eyebrow{font-size:14px;letter-spacing:.08em;font-weight:700;color:var(--ink);margin-bottom:14px}
+h1{font-family:'Frank Ruhl Libre',serif;font-weight:900;font-size:clamp(44px,8vw,72px);line-height:1.05;margin-bottom:10px}
+.tagline{font-size:20px;color:var(--pencil);max-width:34em}
+.workname{font-size:14px;color:var(--pencil);margin-top:8px;font-style:italic}
+
+.hero-demo{margin:40px 0 0;padding:26px 26px 20px;background:rgba(255,255,255,.65);border:1px solid var(--token-border);border-radius:6px}
+.hero-sum{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:40px;color:var(--ink);display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.hero-sum small{font-family:'Assistant';font-size:16px;font-weight:600;color:var(--pencil)}
+.subset-row{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.subset-row .lbl{font-size:14px;color:var(--pencil);min-width:5.5em}
+.hero-note{font-size:15px;color:var(--pencil);margin-top:16px}
+.hero-note b{background:linear-gradient(transparent 55%, var(--marker) 55%);font-weight:700}
+
+/* ---------- tokens ---------- */
+.tok{display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:38px;padding:0 9px;background:var(--token-bg);border:1.5px solid var(--token-border);border-bottom-width:3px;border-radius:7px;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:18px;color:var(--graphite)}
+.tok.faded{opacity:.45}
+.tok.ink{border-color:var(--ink);color:var(--ink)}
+
+/* ---------- sections ---------- */
+section{margin-top:64px}
+h2{font-family:'Frank Ruhl Libre',serif;font-weight:700;font-size:32px;line-height:1.2;margin-bottom:18px;display:flex;align-items:center;gap:14px}
+h2::after{content:"";flex:1;height:1px;background:var(--token-border);opacity:.6}
+h3{font-family:'Frank Ruhl Libre',serif;font-weight:700;font-size:22px;margin:30px 0 10px}
+p{margin-bottom:14px;max-width:42em}
+.hl{background:linear-gradient(transparent 55%, var(--marker) 55%);font-weight:600}
+ol.rules{margin:6px 0 14px 1.4em}
+ol.rules li{margin-bottom:10px;padding-left:6px;max-width:40em}
+
+/* margin note */
+.note{margin:22px 0;padding:14px 18px;border-left:3px solid var(--ink);background:rgba(29,67,189,.05);font-size:16px;color:var(--graphite);max-width:42em;border-radius:0}
+.note .nlbl{display:block;font-size:13px;font-weight:700;letter-spacing:.06em;color:var(--ink);margin-bottom:4px}
+.note.red{border-left-color:var(--redpencil);background:rgba(200,54,43,.05)}
+.note.red .nlbl{color:var(--redpencil)}
+
+/* dialogue example */
+.dialog{margin:18px 0;padding:18px 20px;background:rgba(255,255,255,.7);border:1px dashed var(--token-border);border-radius:6px;font-size:17px;max-width:42em}
+.dialog .q{margin-bottom:6px}
+.dialog .who{font-weight:700}
+.ans-yes{font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--graphite);background:linear-gradient(transparent 45%, var(--marker) 45%);padding:0 4px}
+.ans-no{font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--redpencil);text-decoration:line-through;text-decoration-thickness:2px;padding:0 4px}
+.ans-no-word{font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--redpencil);padding:0 2px}
+
+/* ---------- difficulty cards ---------- */
+.levels{display:grid;grid-template-columns:1fr;gap:22px;margin-top:26px}
+.level{background:rgba(255,255,255,.78);border:1px solid var(--token-border);border-radius:8px;padding:22px 24px 18px;position:relative}
+.level .deg{position:absolute;top:-14px;left:18px;background:var(--paper);border:1px solid var(--token-border);border-radius:999px;padding:2px 14px;font-size:14px;font-weight:700;color:var(--pencil)}
+.level.l2 .deg{color:var(--ink);border-color:var(--ink)}
+.level.l3 .deg{color:var(--redpencil);border-color:var(--redpencil)}
+.level h3{margin:4px 0 12px}
+.level .toks{display:flex;flex-wrap:wrap;gap:7px;margin:8px 0 14px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0 10px}
+.stat{border-top:2px solid var(--token-border);padding-top:6px;font-size:14px;color:var(--pencil)}
+.stat b{display:block;font-family:'IBM Plex Mono',monospace;font-size:21px;font-weight:700;color:var(--graphite)}
+.level.l2 .stat b{color:var(--ink)}
+.level.l3 .stat b{color:var(--redpencil)}
+.level p{font-size:16px;margin-bottom:4px;max-width:none}
+
+/* footer */
+footer{margin-top:80px;padding-top:22px;border-top:1px solid var(--token-border);font-size:15px;color:var(--pencil)}
+footer .sig{font-family:'Frank Ruhl Libre',serif;font-weight:700;color:var(--graphite)}
+
+@media print{body{background:none;font-size:12pt}.page{border-left:none}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <div class="eyebrow">Mathematical Deduction Game · 2–6 Players · Pencil &amp; Paper Required</div>
+  <h1>Hidden Sub-Set</h1>
+  <p class="tagline">Every player hides behind a sum. The list is engineered so that a single sum has dozens of possible decompositions — and your job is to crack, through questions and deduction, your opponent's exact combination before they crack yours.</p>
+
+  <div class="hero-demo">
+    <div class="hero-sum">23 = ? <small>The sum is announced. The subset — secret.</small></div>
+    <div class="subset-row"><span class="lbl">Maybe it's:</span><span class="tok ink">6</span><span class="tok ink">7</span><span class="tok ink">10</span></div>
+    <div class="subset-row"><span class="lbl">Or maybe:</span><span class="tok faded">1</span><span class="tok faded">5</span><span class="tok faded">8</span><span class="tok faded">9</span></div>
+    <div class="subset-row"><span class="lbl">Or even:</span><span class="tok faded">2</span><span class="tok faded">3</span><span class="tok faded">4</span><span class="tok faded">5</span><span class="tok faded">9</span></div>
+    <div class="hero-note">On the Classic list below, the busiest sums have <b>over 80 distinct decompositions</b>. The sum alone gives away almost nothing — and that's exactly where the game begins.</div>
+  </div>
+</header>
+
+<section>
+  <h2>The Idea</h2>
+  <p>Each player secretly picks a combination of numbers from a shared list, and announces only its sum. From there, the chase: questions, note-taking, calculated guesses — until someone names a rival's exact combination and eliminates them. <span class="hl">The last player standing wins.</span></p>
+  <p>The game starts in near-total fog and crystallises gradually into pure logic. Each player "enters the cracking phase" at a different moment — depending on how quickly they sum in their head and recognise decompositions. Mental arithmetic is the actual skill here, not homework.</p>
+</section>
+
+<section>
+  <h2>Setup</h2>
+  <ol class="rules">
+    <li>Agree on a number list (three calibrated lists follow) and on <strong>N</strong> — the maximum combination size.</li>
+    <li>Each player secretly picks a combination of up to N numbers and writes it down. A value that appears twice in the list — both copies may be taken.</li>
+    <li>Each player announces only the <strong>sum</strong> of their combination. The combination's size stays secret.</li>
+  </ol>
+  <div class="note">
+    <span class="nlbl">Margin note</span>
+    Picking your combination is the first strategic move. A sum with many decompositions protects you; an extreme sum — very low or very high — exposes you instantly. And yes: pencil and paper are mandatory. Nobody will keep track for you.
+  </div>
+</section>
+
+<section>
+  <h2>Gameplay</h2>
+  <p>On their turn, a player does one of two things — ask a question, or declare an accusation.</p>
+
+  <h3>Question</h3>
+  <p>The asker addresses one other player and asks about one or more values. The respondent answers <span class="hl">"yes" only if all the asked values are in their combination</span>, and "no" if at least one is missing.</p>
+  <div class="dialog">
+    <div class="q"><span class="who">Dana → Yoav:</span> "Do you have 7?" — <span class="ans-yes">Yes</span> <span style="color:var(--pencil);font-size:15px">(7 is in Yoav's combo, confirmed)</span></div>
+    <div class="q"><span class="who">Dana → Yoav:</span> "Do you have both 4 and 9?" — <span class="ans-no-word">No</span> <span style="color:var(--pencil);font-size:15px">(at least one is missing. Which? Who knows)</span></div>
+  </div>
+  <p>And here's the trap: a "no" to a multi-value question doesn't reveal <em>which</em> value is missing. Asking about several values at once is a gamble — if you guessed right, you saved turns; if not, you got murky information you'll have to unpack with more questions.</p>
+  <ol class="rules">
+    <li>For a value that appears twice in the list, answer "yes" if at least one copy is held. The quantity stays secret.</li>
+    <li>You may not repeat an identical question (same respondent, same values) that has already been asked this game.</li>
+    <li>All questions and answers are spoken aloud, audible to everyone. One player's information is everyone's information — for whoever is listening and writing it down.</li>
+  </ol>
+
+  <h3>Accusation</h3>
+  <p>A player convinced they've cracked an opponent declares that opponent's full and exact combination, including duplicates: "You have 3, 5, 5 and 8". Correct — the opponent is eliminated and the combination is revealed to all. Wrong — <span class="hl">the accuser is eliminated instead</span>. The wager is symmetric: accuse only when you're sure, or when you have no choice.</p>
+  <div class="note red">
+    <span class="nlbl">Automatic-reveal rule</span>
+    If a "yes" answer covers values whose sum exactly equals the respondent's announced sum — the combination is thereby fully revealed, and the respondent is eliminated. Such a question is effectively a safe accusation.
+  </div>
+
+  <h3>Victory</h3>
+  <p>The last player not eliminated wins. If you stop without a clear winner — the player who confirmed the most values across their opponents (via "yes" answers) takes it.</p>
+</section>
+
+<section>
+  <h2>Three Calibrated Lists</h2>
+  <p>These lists weren't chosen by feel: each was computed with its full distribution of decomposition counts across every possible sum. The numbers below are exact.</p>
+
+  <div class="levels">
+
+    <div class="level l1">
+      <span class="deg">Level 1 · Warmup</span>
+      <h3>The Opening List</h3>
+      <div class="toks">
+        <span class="tok">1</span><span class="tok">2</span><span class="tok">3</span><span class="tok">4</span><span class="tok">5</span><span class="tok">6</span><span class="tok">7</span><span class="tok">8</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><b>N = 4</b>Max combination size</div>
+        <div class="stat"><b>162</b>Possible combinations</div>
+        <div class="stat"><b>13–18</b>The protected sums</div>
+        <div class="stat"><b>Up to 12</b>Decompositions per sum</div>
+      </div>
+      <p>A short, friendly game — for learning the rules and for younger players. Sums under 6 or above 24 are almost exposed.</p>
+    </div>
+
+    <div class="level l2">
+      <span class="deg">Level 2 · Classic</span>
+      <h3>The Recommended Balance</h3>
+      <div class="toks">
+        <span class="tok">1</span><span class="tok">2</span><span class="tok">3</span><span class="tok">4</span><span class="tok ink">5</span><span class="tok ink">5</span><span class="tok">6</span><span class="tok">7</span><span class="tok">8</span><span class="tok">9</span><span class="tok">10</span><span class="tok">12</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><b>N = 6</b>Max combination size</div>
+        <div class="stat"><b>1,871</b>Possible combinations</div>
+        <div class="stat"><b>28–33</b>The protected sums</div>
+        <div class="stat"><b>Up to 85</b>Decompositions per sum</div>
+      </div>
+      <p>A single duplicate (a pair of fives) adds fog: even after confirming a 5 is held, you can't tell whether there are two. Real depth, still manageable with a notepad.</p>
+    </div>
+
+    <div class="level l3">
+      <span class="deg">Level 3 · Expert</span>
+      <h3>Extended Fog Phase</h3>
+      <div class="toks">
+        <span class="tok">1</span><span class="tok ink">2</span><span class="tok ink">2</span><span class="tok ink">3</span><span class="tok ink">3</span><span class="tok">4</span><span class="tok ink">5</span><span class="tok ink">5</span><span class="tok">6</span><span class="tok">7</span><span class="tok">8</span><span class="tok">9</span><span class="tok">10</span><span class="tok">11</span><span class="tok">12</span><span class="tok">15</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><b>N = 6</b>Max combination size</div>
+        <div class="stat"><b>6,679</b>Possible combinations</div>
+        <div class="stat"><b>33–38</b>The protected sums</div>
+        <div class="stat"><b>Up to 262</b>Decompositions per sum</div>
+      </div>
+      <p>Three duplicate pairs, 16 tokens. Cracking demands systematic note-keeping and patient deduction. Recommended with a per-turn timer — otherwise the game devolves into a paper-and-pencil workshop.</p>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <h2>Difficulty Knobs</h2>
+  <p>The same rules serve a children's game and a forehead-furrowing one. What changes: list size, number density, duplicate count, and N. Want more? Add a turn timer — mental speed shifts from soft to hard requirement. For younger groups you can ease in: announce the combination's size too, not just the sum.</p>
+</section>
+
+<section>
+  <h2>One Final Strategic Hint</h2>
+  <p>Two truths you'll discover yourself, but no point waiting:</p>
+  <ol class="rules">
+    <li>Values larger than the announced sum are eliminated immediately — free deduction, before the first question.</li>
+    <li>A "failed" multi-value question is a dormant asset: once you confirm some of those values later, you'll automatically know something about the rest — without asking.</li>
+  </ol>
+  <p class="hl" style="display:inline-block">Good luck. And write everything down.</p>
+</section>
+
+<section>
+  <h2>Play Now</h2>
+  <p>All you need is one device and a few people. Each player privately enters their combination, and the system manages turns, computes answers, and enforces the game's rules.</p>
+  <p><a href="play.html" style="display:inline-block;background:var(--redpencil);color:#fff;padding:10px 22px;border-radius:7px;font-weight:700;text-decoration:none;font-size:17px;margin-right:8px">Local Pass-and-Play →</a></p>
+</section>
+
+<section>
+  <h2>Interactive Decomposition Lab</h2>
+  <p>Want to explore the mathematical structure behind the game yourself? Define your own list, view the full decomposition spectrum, and play with a Fourier engine that demonstrates how subsets are counted via rotating epicycles?</p>
+  <p><a href="lab.html" style="display:inline-block;background:var(--ink);color:#fff;padding:10px 22px;border-radius:7px;font-weight:700;text-decoration:none;font-size:17px">Open the Lab →</a></p>
+</section>
+
+<footer>
+  <span class="sig">Hidden Sub-Set</span> · Game &amp; tools by <b>Elad Dafni</b> · Subset-sum deduction game · Lists calibrated by full decomposition-distribution analysis
+  <br>
+  <span style="font-size:13px">Released under <a href="LICENSE" style="color:var(--ink);font-weight:600;text-decoration:none">MIT (code) + CC BY 4.0 (content)</a></span>
+</footer>
+
+</div>
+</body>
+</html>

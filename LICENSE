@@ -1,0 +1,90 @@
+Hidden Sub-Set — Dual License Declaration
+==========================================
+
+This project is released under TWO separate licenses, applied to two distinct
+parts of the work. The split makes it easy to reuse the implementation in your
+own projects while keeping the game and its instructional content attributed
+to its author.
+
+Copyright (c) 2026 Elad Dafni
+
+
+────────────────────────────────────────────────────────────────────────────
+PART 1 — CODE: MIT License
+────────────────────────────────────────────────────────────────────────────
+
+Applies to: the HTML structure, CSS, JavaScript, the test harness, and any
+other technical implementation files in this repository (and the corresponding
+parts of files that mix code and content).
+
+MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+────────────────────────────────────────────────────────────────────────────
+PART 2 — CREATIVE CONTENT: Creative Commons Attribution 4.0 International
+                            (CC BY 4.0)
+────────────────────────────────────────────────────────────────────────────
+
+Applies to: the game design ("Hidden Sub-Set"), its rules and instructional
+text, the three calibrated number lists and their distribution analysis, the
+prose, the lab's pedagogical explanations, and the overall visual design
+language.
+
+You are free to:
+  • Share — copy and redistribute the material in any medium or format.
+  • Adapt — remix, transform, and build upon the material for any purpose,
+            including commercial use.
+
+Under the following terms:
+  • Attribution — You must give appropriate credit to "Elad Dafni" as the
+                   original author, provide a link to this license, and
+                   indicate if changes were made. You may do so in any
+                   reasonable manner, but not in any way that suggests the
+                   licensor endorses you or your use.
+  • No additional restrictions — You may not apply legal terms or
+                                  technological measures that legally restrict
+                                  others from doing anything the license
+                                  permits.
+
+Full license text:
+  https://creativecommons.org/licenses/by/4.0/legalcode
+Human-readable summary:
+  https://creativecommons.org/licenses/by/4.0/
+
+
+────────────────────────────────────────────────────────────────────────────
+PLAIN-LANGUAGE SUMMARY
+────────────────────────────────────────────────────────────────────────────
+
+• If you want to reuse the code (lift the HTML/CSS/JS into another project,
+  build derivative tools, fork the implementation): MIT terms apply — keep
+  the copyright notice and you are otherwise free.
+
+• If you want to use the game itself (republish the rules, translate them,
+  use the calibrated lists in your own product, recreate the lab, write a
+  derived game): CC BY 4.0 terms apply — credit Elad Dafni and link this
+  license.
+
+• If you use both together (e.g., clone the whole repo, host it as-is, or
+  produce a derived edition): comply with both licenses for their respective
+  parts.
+
+Questions or commercial licensing inquiries: contact the author.
