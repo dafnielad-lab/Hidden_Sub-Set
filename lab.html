@@ -857,8 +857,8 @@ function engineDraw(){
   /* Gray "world" axes */
   var grayAng = viewPhi;
   var ca = Math.cos(grayAng), sa = Math.sin(grayAng);
-  ctx.strokeStyle = LIGHT; ctx.lineWidth = ZI;
-  ctx.setLineDash([3*ZI, 4*ZI]);
+  ctx.strokeStyle = GRAY; ctx.lineWidth = 1.2*ZI;
+  ctx.setLineDash([4*ZI, 4*ZI]);
   ctx.beginPath();
   ctx.moveTo(cx - axR*ca, cy + axR*sa);
   ctx.lineTo(cx + axR*ca, cy - axR*sa);
