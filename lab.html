@@ -201,6 +201,11 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .modebtn .modesub{font-size:11px;color:var(--pencil);font-weight:600;font-family:'IBM Plex Mono',monospace}
 .modebtn.on .modesub{color:var(--graphite)}
 
+/* Honest engine: bars + running-sum overlay rendered on a single canvas */
+#polyCanvas{display:block;width:100%;max-width:100%;height:auto;background:#fff;border:1px solid var(--token-border);border-radius:8px;margin-top:6px}
+.honest-match{margin-top:8px;font-size:13px;color:var(--pencil)}
+.honest-match.ok{color:var(--teal);font-weight:700}
+
 /* X(t) strip chart */
 .chart-wrap{margin-top:20px;padding-top:18px;border-top:1px dashed var(--token-border)}
 .chart-wrap .chart-title{
@@ -309,7 +314,16 @@ footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--token-border)
 <!-- ============ 4. engine ============ -->
 <div class="card" id="engineCard" style="display:none">
   <h2><span class="step">4</span>The Epicycle Engine</h2>
+
+  <div class="honest-section" style="margin-bottom:18px">
+    <div class="chart-sub">The blue bars below are |poly[z<sup>k</sup>]| at the current t — the magnitudes of polynomial coefficients computed by multiplying one factor (1 + z·w<sup>x</sup> + z<sup>2</sup>·w<sup>2x</sup> + ⋯) per distinct list value. The gray z<sup>0</sup> bar is excluded by the size constraint (size ≥ 1). The teal line traces the running magnitude |poly[z<sup>1</sup>] + ⋯ + poly[z<sup>k</sup>]|, ending at |f(t)| on the right — the same value appears in the detector canvas below as √(X² + Y²) of the chain tip's coordinates.</div>
+    <canvas id="polyCanvas" width="700" height="170"></canvas>
+    <div class="honest-match" id="honestMatch">—</div>
+    <span id="honestEst" style="display:none">—</span><span id="honestTruth" style="display:none">—</span>
+  </div>
+
   <p class="hint" style="margin:0 0 12px">Every possible sum is a phasor rotating at the speed of its sum, with length equal to its decomposition count. A Fourier detector "listens" to the frequency of the selected sum, and its running average converges exactly to that count.</p>
+
   <div class="engine-flex">
     <div class="engine-canvas"><canvas id="cv" width="520" height="440"></canvas></div>
     <div class="engine-side">
@@ -437,6 +451,8 @@ function build(){
 
   vals = list.slice().sort(function(a,b){return a-b;});
   uniq = vals.filter(function(x,i){ return i === 0 || x !== vals[i-1]; });
+  listMult = {};
+  for (var lm = 0; lm < vals.length; lm++) listMult[vals[lm]] = (listMult[vals[lm]] || 0) + 1;
   Nmax = N;
   groups = res.groups;
   totalCombos = res.total;
@@ -746,6 +762,11 @@ var TRAIL_COLORS = [TEAL, INK, RUST];
 var engT = 0, playing = true, trace = [], acc = {re:0, im:0}, nSamp = 0, engTarget = null;
 var viewMode = 0, viewPhi = 0, chartBuf = [], CHART_MAX = 600;
 var cvZoom = 1, cvPanX = 0, cvPanY = 0;  /* mouse-wheel zoom on main canvas, dbl-click resets */
+/* Honest engine — builds f(t) from list via polynomial product, independent of c_s */
+var listMult = {};                       /* value -> multiplicity in list */
+var honestPoly = [];                     /* polynomial coefficients at current t: [{re,im} per z^k] */
+var honestAcc = {re:0, im:0}, honestN = 0; /* detector accumulator */
+var honestTrace = [];                    /* {re,im,t} of recent f(t) values */
 var chartYMin = 0, chartYMax = 0;
 
 function engineTargetSum(){
@@ -756,6 +777,7 @@ function engineTargetSum(){
 function engineRebuild(){
   trace = []; chartBuf = []; engT = 0; viewPhi = 0;
   cvZoom = 1; cvPanX = 0; cvPanY = 0;
+  honestAcc = {re:0, im:0}; honestN = 0; honestTrace = []; honestPoly = [];
   setViewMode(0);
   engineRetarget();
 }
@@ -771,6 +793,7 @@ function setViewMode(m){
 function engineRetarget(){
   engTarget = engineTargetSum();
   acc = {re:0, im:0}; nSamp = 0;
+  honestAcc = {re:0, im:0}; honestN = 0; honestTrace = [];
   trace = []; chartBuf = [];
   var truth0 = engTarget !== null ? (counts[engTarget] || 0) : 0;
   var seed = Math.max(1, Math.abs(truth0) * 0.5);
@@ -812,8 +835,191 @@ function engineFrame(){
     }
     engineDraw();
     chartDraw();
+    honestFrame();
   }
   requestAnimationFrame(engineFrame);
+}
+
+/* ---------- Honest engine: build f(t) from list via polynomial product ---------- */
+/* g(z, w) = ∏_{distinct x} (1 + z·w^x + z²·w^{2x} + ... + z^{m_x}·w^{m_x·x})
+   where m_x is the multiplicity of x in the list and w = e^{2πit}.
+   f(t) = ∑_{k=1..N} [coefficient of z^k in g(z, e^{2πit})].
+   No prior c_s knowledge is used. */
+function honestComputePoly(t){
+  var N = Nmax;
+  var poly = [];
+  for (var k = 0; k <= N; k++) poly.push({re:0, im:0});
+  poly[0].re = 1;
+  for (var u = 0; u < uniq.length; u++){
+    var x = uniq[u];
+    var m = listMult[x] || 1;
+    var np = [];
+    for (var k = 0; k <= N; k++) np.push({re:0, im:0});
+    for (var k = 0; k <= N; k++){
+      var jMax = Math.min(k, m);
+      for (var j = 0; j <= jMax; j++){
+        var ang = 2*Math.PI*j*x*t;
+        var cR = Math.cos(ang), cI = Math.sin(ang);
+        var pR = poly[k-j].re, pI = poly[k-j].im;
+        np[k].re += cR*pR - cI*pI;
+        np[k].im += cR*pI + cI*pR;
+      }
+    }
+    poly = np;
+  }
+  return poly;
+}
+
+function honestFrame(){
+  var card = $('engineCard');
+  if (!card || card.style.display === 'none') return;
+  if (engTarget === null || !playing) { drawPolyOnCanvas(); return; }
+
+  honestPoly = honestComputePoly(engT);
+  var fre = 0, fim = 0;
+  for (var k = 1; k <= Nmax; k++){ fre += honestPoly[k].re; fim += honestPoly[k].im; }
+
+  /* Detector: average of f(t) · e^{-2πiSt} — same logic as main detector but using honest f(t) */
+  var cS = Math.cos(2*Math.PI*engTarget*engT), sS = Math.sin(2*Math.PI*engTarget*engT);
+  var xVal = fre*cS + fim*sS;
+  honestAcc.re += xVal;
+  honestN++;
+  var est = honestAcc.re / honestN;
+  var truth = counts[engTarget] || 0;
+  /* keep hidden spans up to date for the headless test harness */
+  $('honestEst').textContent = est.toFixed(2);
+  $('honestTruth').textContent = truth;
+
+  var matchEl = $('honestMatch');
+  if (matchEl){
+    var mainEst = parseFloat($('estLbl').textContent);
+    var dM = isFinite(mainEst) ? Math.abs(est - mainEst) : Infinity;
+    if (dM < 0.01){
+      matchEl.textContent = '✓ honest detector matches main engine exactly (' + est.toFixed(2) + ' vs enumeration ' + truth + ')';
+      matchEl.className = 'honest-match ok';
+    } else {
+      matchEl.textContent = 'honest detector: ' + est.toFixed(2) + ', main: ' + mainEst.toFixed(2) + ', enumeration: ' + truth;
+      matchEl.className = 'honest-match';
+    }
+  }
+
+  drawPolyOnCanvas();
+}
+
+function drawPolyOnCanvas(){
+  var cv2 = $('polyCanvas');
+  if (!cv2 || !cv2.getContext) return;
+  var ctx2 = cv2.getContext('2d');
+  var W = cv2.width, H = cv2.height;
+  ctx2.clearRect(0,0,W,H);
+  ctx2.fillStyle = '#fff'; ctx2.fillRect(0,0,W,H);
+  if (!honestPoly.length) return;
+
+  var pad = {l:44, r:60, t:14, b:30};
+  var plotW = W - pad.l - pad.r;
+  var plotH = H - pad.t - pad.b;
+
+  /* Magnitudes per coefficient and running cumulative magnitudes (k=1..N only) */
+  var mags = [];
+  for (var k = 0; k < honestPoly.length; k++){
+    mags.push(Math.sqrt(honestPoly[k].re*honestPoly[k].re + honestPoly[k].im*honestPoly[k].im));
+  }
+  var runMags = [];   /* runMags[i] = |poly[1]+...+poly[i+1]| */
+  var sRe = 0, sIm = 0;
+  for (var k = 1; k < honestPoly.length; k++){
+    sRe += honestPoly[k].re;
+    sIm += honestPoly[k].im;
+    runMags.push(Math.sqrt(sRe*sRe + sIm*sIm));
+  }
+
+  /* Scale: max of bars and running sums */
+  var maxMag = 0;
+  for (var i = 0; i < mags.length; i++) if (mags[i] > maxMag) maxMag = mags[i];
+  for (var i = 0; i < runMags.length; i++) if (runMags[i] > maxMag) maxMag = runMags[i];
+  if (maxMag < 1e-6) maxMag = 1;
+
+  /* Bar layout */
+  var n = honestPoly.length;
+  var slotW = plotW / n;
+  var barW = slotW * 0.62;
+
+  /* Plot frame */
+  ctx2.strokeStyle = LIGHT; ctx2.lineWidth = 1;
+  ctx2.beginPath();
+  ctx2.moveTo(pad.l, pad.t); ctx2.lineTo(pad.l, pad.t + plotH);
+  ctx2.lineTo(pad.l + plotW, pad.t + plotH);
+  ctx2.stroke();
+
+  /* y-axis tick labels (0, max) */
+  ctx2.fillStyle = '#9a988f';
+  ctx2.font = '10px "IBM Plex Mono",monospace';
+  ctx2.textAlign = 'right';
+  ctx2.textBaseline = 'middle';
+  ctx2.fillText(Math.round(maxMag), pad.l - 4, pad.t + 4);
+  ctx2.fillText('0', pad.l - 4, pad.t + plotH);
+
+  /* Draw bars */
+  for (var k = 0; k < n; k++){
+    var slotX = pad.l + k*slotW;
+    var bx = slotX + (slotW - barW)/2;
+    var barH = (mags[k] / maxMag) * plotH;
+    var by = pad.t + plotH - barH;
+    ctx2.fillStyle = k >= 1 ? 'rgba(29, 67, 189, 0.78)' : 'rgba(155, 152, 143, 0.5)';
+    ctx2.fillRect(bx, by, barW, barH);
+    /* Magnitude value above bar */
+    if (mags[k] > 0.5){
+      ctx2.fillStyle = '#5A5A64';
+      ctx2.font = '10px "IBM Plex Mono",monospace';
+      ctx2.textAlign = 'center';
+      ctx2.textBaseline = 'bottom';
+      ctx2.fillText(mags[k].toFixed(2), bx + barW/2, by - 2);
+    }
+    /* x-axis label */
+    ctx2.fillStyle = '#5A5A64';
+    ctx2.font = '11px "IBM Plex Mono",monospace';
+    ctx2.textAlign = 'center';
+    ctx2.textBaseline = 'top';
+    ctx2.fillText('z' + (k === 0 ? '⁰' : (k === 1 ? '¹' : (k === 2 ? '²' : (k === 3 ? '³' : (k === 4 ? '⁴' : (k === 5 ? '⁵' : (k === 6 ? '⁶' : '^'+k))))))), bx + barW/2, pad.t + plotH + 4);
+  }
+
+  /* Running-sum line: walks across k = 1..N */
+  if (runMags.length){
+    ctx2.strokeStyle = TEAL; ctx2.lineWidth = 2;
+    ctx2.beginPath();
+    for (var i = 0; i < runMags.length; i++){
+      var k = i + 1;
+      var slotX = pad.l + k*slotW;
+      var cxBar = slotX + slotW/2;
+      var yPos = pad.t + plotH - (runMags[i] / maxMag) * plotH;
+      if (i === 0) ctx2.moveTo(cxBar, yPos); else ctx2.lineTo(cxBar, yPos);
+    }
+    ctx2.stroke();
+    /* Endpoint marker = |f(t)| */
+    var iLast = runMags.length - 1;
+    var kLast = iLast + 1;
+    var lastSlotX = pad.l + kLast*slotW;
+    var lastX = lastSlotX + slotW/2;
+    var lastY = pad.t + plotH - (runMags[iLast] / maxMag) * plotH;
+    ctx2.fillStyle = TEAL;
+    ctx2.beginPath(); ctx2.arc(lastX, lastY, 4, 0, 2*Math.PI); ctx2.fill();
+    /* Endpoint label */
+    ctx2.fillStyle = TEAL;
+    ctx2.font = 'bold 11px "IBM Plex Mono",monospace';
+    ctx2.textAlign = 'left';
+    ctx2.textBaseline = 'middle';
+    ctx2.fillText('|f(t)| = ' + runMags[iLast].toFixed(2), lastX + 8, lastY);
+  }
+
+  /* Legend line */
+  ctx2.strokeStyle = TEAL; ctx2.lineWidth = 2;
+  ctx2.beginPath();
+  ctx2.moveTo(pad.l + 4, pad.t + 6); ctx2.lineTo(pad.l + 22, pad.t + 6);
+  ctx2.stroke();
+  ctx2.fillStyle = '#5A5A64';
+  ctx2.font = '10px Assistant,sans-serif';
+  ctx2.textAlign = 'left';
+  ctx2.textBaseline = 'middle';
+  ctx2.fillText('running |Σ poly[z¹..zᵏ]|', pad.l + 28, pad.t + 6);
 }
 
 function engineDraw(){
@@ -918,17 +1124,23 @@ function engineDraw(){
   }
   ctx.globalAlpha = 1;
 
-  /* Tip + perpendicular drop onto the PURPLE X axis */
+  /* Tip + perpendicular drops onto the PURPLE X and Y axes */
   var tipX = pts[pts.length-1][0], tipY = pts[pts.length-1][1];
   var dx = tipX - cx, dy = tipY - cy;
-  var proj = dx*pca + dy*(-psa);
-  var footX = cx + proj*pca, footY = cy - proj*psa;
+  var projX = dx*pca + dy*(-psa);
+  var footXx = cx + projX*pca, footXy = cy - projX*psa;
+  var projY = -psa*dx - pca*dy;
+  var footYx = cx - projY*psa, footYy = cy - projY*pca;
   ctx.strokeStyle = PURPLE; ctx.globalAlpha = 0.5; ctx.lineWidth = ZI;
   ctx.setLineDash([2*ZI, 3*ZI]);
-  ctx.beginPath(); ctx.moveTo(tipX, tipY); ctx.lineTo(footX, footY); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(tipX, tipY); ctx.lineTo(footXx, footXy);
+  ctx.moveTo(tipX, tipY); ctx.lineTo(footYx, footYy);
+  ctx.stroke();
   ctx.setLineDash([]); ctx.globalAlpha = 1;
   ctx.fillStyle = PURPLE;
-  ctx.beginPath(); ctx.arc(footX, footY, 4*ZI, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(footXx, footXy, 4*ZI, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.arc(footYx, footYy, 4*ZI, 0, 7); ctx.fill();
 
   ctx.fillStyle = TRAIL_COLORS[viewMode] || TEAL;
   ctx.beginPath(); ctx.arc(tipX, tipY, 3.8*ZI, 0, 7); ctx.fill();
@@ -997,6 +1209,27 @@ function engineDraw(){
     ctx.font = 'bold 11px "IBM Plex Mono",monospace';
     ctx.textAlign = 'left';
     ctx.fillText('×' + Z.toFixed(2) + '  · double-click to reset', 10, 18);
+  }
+
+  /* X / Y / |f| readout at the bottom of the canvas (purple-axis projections of the tip).
+     Labels are pinned to fixed anchors; values are right-aligned to fixed anchors so the
+     rightmost digit never moves — only the leading edge expands/contracts on sign/digit changes. */
+  if (unit > 0 && totalCombos > 0){
+    var xVal = projX / unit;
+    var yVal = projY / unit;
+    var magVal = Math.sqrt(xVal*xVal + yVal*yVal);
+    var yText = H - 10;
+    ctx.fillStyle = PURPLE;
+    ctx.font = 'bold 13px "IBM Plex Mono",monospace';
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'left';
+    ctx.fillText('X =', W/2 - 235, yText);
+    ctx.fillText('Y =', W/2 - 110, yText);
+    ctx.fillText('√(X²+Y²) =', W/2 + 15, yText);
+    ctx.textAlign = 'right';
+    ctx.fillText(xVal.toFixed(2), W/2 - 130, yText);
+    ctx.fillText(yVal.toFixed(2), W/2 - 5, yText);
+    ctx.fillText(magVal.toFixed(2), W/2 + 195, yText);
   }
 }
 
